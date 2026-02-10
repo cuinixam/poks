@@ -69,7 +69,7 @@ A JSON file describing an application. It supports multiple archives for differe
         }
     ],
     "extract_dir": "zephyr-sdk-0.16.5-1",
-    "env_set": {
+    "env": {
         "ZEPHYR_SDK_INSTALL_DIR": "${dir}"
     }
 }
@@ -85,7 +85,7 @@ Manifests support variable expansion using `${variable}` syntax:
 - `${os}`: The target operating system.
 - `${arch}`: The target architecture.
 - `${ext}`: The file extension from the archive entry.
-- `${dir}`: The app's installation directory (e.g., `~/.poks/apps/zephyr-sdk/0.16.5-1`). Used in `env_set`.
+- `${dir}`: The app's installation directory (e.g., `~/.poks/apps/zephyr-sdk/0.16.5-1`). Used in `env`.
 
 **Archives List**:
 The `archives` field is a list where each element defines:
@@ -246,15 +246,15 @@ class PoksManifest:
     extract_dir: Optional[str] = None
 
     # Post-install configuration
-    bin: Optional[List[str]] = None  # Relative paths to add to PATH
-    env_add_path: Optional[List[str]] = None
-    env_set: Optional[Dict[str, str]] = None
+    bin: Optional[List[str]] = None  # Subdirectories containing executables (added to PATH)
+    env: Optional[Dict[str, str]] = None  # Environment variables to set (supports ${dir})
 ```
 
 ### Archive Support
 
 - **Zip**: Built-in `zipfile`.
 - **Tar (gz, xz, bz2)**: Built-in `tarfile`.
+- **7z**: `py7zr` (third-party dependency).
 
 ### CLI Commands
 
@@ -264,8 +264,14 @@ Poks intentionally does **not** have `update` or `clean` commands. Different pro
 # Install tools defined in poks.json
 poks install -c poks.json
 
-# Install a specific tool from a specific bucket
+# Install a specific tool (searches all local buckets)
+poks install zephyr-sdk@0.16.5-1
+
+# Install from a specific local bucket
 poks install zephyr-sdk@0.16.5-1 --bucket main
+
+# Install from a bucket URL (cloned on-the-fly)
+poks install zephyr-sdk@0.16.5-1 --bucket https://github.com/poks/main-bucket.git
 
 # Uninstall a specific version of an app
 poks uninstall zephyr-sdk@0.16.5-1

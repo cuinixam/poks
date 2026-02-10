@@ -75,6 +75,8 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs:
 
 ## Coding Guidelines
 
+- **Less is more** — be concise and question every implementation that looks too complicated; if there is a simpler way, use it.
+- **Never nester** — maximum three indentation levels are allowed. Use early returns, guard clauses, and extraction into helper functions to keep nesting shallow. The third level should only be used when truly necessary.
 - Always include full **type hints** (functions, methods, public attrs, constants).
 - Prefer **pythonic** constructs: context managers, `pathlib`, comprehensions when clear, `enumerate`, `zip`, early returns, no over-nesting.
 - Follow **SOLID**: single responsibility; prefer composition; program to interfaces (`Protocol`/ABC); inject dependencies.
