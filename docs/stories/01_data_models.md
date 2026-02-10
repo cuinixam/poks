@@ -70,10 +70,10 @@ Create a new module `src/poks/models.py` with the following dataclasses:
 
 ## Acceptance Criteria
 
-- [ ] All dataclasses use `DataClassJSONMixin` with `BaseConfig` and `TO_DICT_ADD_OMIT_NONE_FLAG`.
-- [ ] `PoksConfig.from_json_file` correctly loads a sample `poks.json`.
-- [ ] `PoksManifest.from_json_file` correctly loads a sample manifest JSON.
-- [ ] `to_json_file` round-trips correctly (omitting `None` fields).
-- [ ] `is_supported` filters apps by OS and architecture.
-- [ ] Parametrized pytest tests cover valid input, missing optional fields, and invalid JSON.
-- [ ] `pypeline run` passes.
+- [x] All dataclasses use `DataClassJSONMixin` with `BaseConfig` and `omit_none = True`.
+- [x] `PoksConfig.from_json_file` correctly loads a sample `poks.json`.
+- [x] `PoksManifest.from_json_file` correctly loads a sample manifest JSON.
+- [x] `to_json_file` round-trips correctly (omitting `None` fields).
+- [x] `is_supported` filters apps by OS and architecture.
+- [x] Parametrized pytest tests cover valid input, missing optional fields, and invalid JSON.
+- [x] `pypeline run` passes.
