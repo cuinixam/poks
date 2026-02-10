@@ -32,10 +32,10 @@ Create a function (or utility module `src/poks/resolver.py`):
 
 ## Acceptance Criteria
 
-- [ ] Variable expansion replaces all supported placeholders.
-- [ ] Unknown variables are left as-is (no crash).
-- [ ] `resolve_archive` returns the correct entry for a given OS/arch pair.
-- [ ] `resolve_archive` raises a clear error for unsupported platforms.
-- [ ] `resolve_download_url` uses the archive URL when present, falls back to the manifest template.
-- [ ] Parametrized tests cover multiple OS/arch combinations and missing templates.
-- [ ] `pypeline run` passes.
+- [x] Variable expansion replaces all supported placeholders.
+- [x] Unknown variables are left as-is (no crash).
+- [x] `resolve_archive` returns the correct entry for a given OS/arch pair.
+- [x] `resolve_archive` raises a clear error for unsupported platforms.
+- [x] `resolve_download_url` uses the archive URL when present, falls back to the manifest template.
+- [x] Parametrized tests cover multiple OS/arch combinations and missing templates.
+- [x] `pypeline run` passes.
