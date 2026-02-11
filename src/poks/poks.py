@@ -77,12 +77,39 @@ class Poks:
             version: Specific version to uninstall. If None, uninstalls all versions of the app.
             all_apps: If True, uninstalls all apps.
 
+        Raises:
+            ValueError: If the specified app or version does not exist.
+
         """
+        import shutil
+
         if all_apps:
             logger.info("Uninstalling all apps")
-        elif app_name and version:
-            logger.info(f"Uninstalling {app_name}@{version}")
-        elif app_name:
-            logger.info(f"Uninstalling all versions of {app_name}")
-        else:
+            for item in self.apps_dir.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item)
+                    logger.info(f"Removed {item.name}")
+            return
+
+        if not app_name:
             logger.warning("Nothing to uninstall. Specify an app name or use --all.")
+            return
+
+        app_dir = self.apps_dir / app_name
+
+        if version:
+            version_dir = app_dir / version
+            if not version_dir.exists():
+                raise ValueError(f"App {app_name}@{version} is not installed")
+            logger.info(f"Uninstalling {app_name}@{version}")
+            shutil.rmtree(version_dir)
+            logger.info(f"Removed {app_name}@{version}")
+            if app_dir.exists() and not any(app_dir.iterdir()):
+                app_dir.rmdir()
+                logger.info(f"Removed empty directory {app_name}")
+        else:
+            if not app_dir.exists():
+                raise ValueError(f"App {app_name} is not installed")
+            logger.info(f"Uninstalling all versions of {app_name}")
+            shutil.rmtree(app_dir)
+            logger.info(f"Removed {app_name}")

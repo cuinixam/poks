@@ -29,10 +29,10 @@ Replace the current stub in `src/poks/poks.py` with actual file deletion:
 
 ## Acceptance Criteria
 
-- [ ] Uninstalling a specific version removes only that version directory.
-- [ ] Uninstalling a specific version cleans up the parent directory if empty.
-- [ ] Uninstalling all versions removes the entire app directory.
-- [ ] Uninstalling all apps clears the apps directory.
-- [ ] Attempting to uninstall a non-existent app raises a clear error.
-- [ ] Tests use `tmp_path` with a pre-populated directory structure.
-- [ ] `pypeline run` passes.
+- [x] Uninstalling a specific version removes only that version directory.
+- [x] Uninstalling a specific version cleans up the parent directory if empty.
+- [x] Uninstalling all versions removes the entire app directory.
+- [x] Uninstalling all apps clears the apps directory.
+- [x] Attempting to uninstall a non-existent app raises a clear error.
+- [x] Tests use `tmp_path` with a pre-populated directory structure.
+- [x] `pypeline run` passes.
