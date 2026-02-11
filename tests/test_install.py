@@ -239,3 +239,46 @@ def test_invalid_config_json_raises(
     bad_config.write_text("not valid json")
     with pytest.raises(json.JSONDecodeError):
         poks.install(bad_config)
+
+
+def test_install_app_explicit_bucket(
+    install_env: tuple[Poks, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    poks, root_dir, archives_dir = install_env
+    manifest = _make_manifest(archives_dir)
+    bucket_dir = root_dir / "buckets" / "my-bucket"
+    _setup_bucket(bucket_dir, {"app-a": manifest})
+
+    with PLATFORM_PATCH:
+        monkeypatch.setattr(
+            "poks.poks.sync_all_buckets",
+            lambda _buckets, _dir: {"my-bucket": bucket_dir},
+        )
+        poks.install_app("app-a@1.0.0", bucket="my-bucket")
+
+    assert (root_dir / "apps" / "app-a" / "1.0.0").exists()
+
+
+def test_install_app_auto_bucket(
+    install_env: tuple[Poks, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    poks, root_dir, archives_dir = install_env
+    manifest = _make_manifest(archives_dir)
+    bucket_dir = root_dir / "buckets" / "auto-bucket"
+    _setup_bucket(bucket_dir, {"app-b": manifest})
+
+    monkeypatch.setattr(
+        "poks.poks.search_all_buckets",
+        lambda _name, _dir: (None, "auto-bucket"),
+    )
+
+    with PLATFORM_PATCH:
+        monkeypatch.setattr(
+            "poks.poks.sync_all_buckets",
+            lambda _buckets, _dir: {"auto-bucket": bucket_dir},
+        )
+        poks.install_app("app-b@1.0.0")
+
+    assert (root_dir / "apps" / "app-b" / "1.0.0").exists()

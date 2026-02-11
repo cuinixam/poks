@@ -6,8 +6,14 @@ from pathlib import Path
 
 from py_app_dev.core.logging import logger
 
-from poks.bucket import find_manifest, sync_all_buckets
-from poks.domain import PoksApp, PoksConfig, PoksManifest
+from poks.bucket import (
+    find_manifest,
+    is_bucket_url,
+    search_all_buckets,
+    sync_all_buckets,
+    sync_bucket,
+)
+from poks.domain import PoksApp, PoksBucket, PoksConfig, PoksManifest
 from poks.downloader import get_cached_or_download
 from poks.environment import collect_env_updates, merge_env_updates
 from poks.extractor import extract_archive
@@ -30,6 +36,45 @@ class Poks:
         self.apps_dir = root_dir / "apps"
         self.buckets_dir = root_dir / "buckets"
         self.cache_dir = root_dir / "cache"
+
+    def install_app(self, app_spec: str, bucket: str | None = None) -> None:
+        """
+        Install a single application.
+
+        Args:
+            app_spec: Application specification (name@version).
+            bucket: Optional bucket name or URL.
+
+        Raises:
+            ValueError: If app_spec is invalid or bucket is not found.
+
+        """
+        if "@" not in app_spec:
+            raise ValueError(f"Invalid app spec '{app_spec}'. Use format: name@version")
+
+        app_name, app_version = app_spec.split("@", 1)
+
+        if bucket:
+            if is_bucket_url(bucket):
+                temp_bucket = PoksBucket(name="temp", url=bucket)
+                bucket_path = sync_bucket(temp_bucket, self.buckets_dir)
+                find_manifest(app_name, bucket_path)
+                bucket_name = "temp"
+            else:
+                bucket_path = self.buckets_dir / bucket
+                if not bucket_path.exists():
+                    raise ValueError(f"Bucket '{bucket}' not found in {self.buckets_dir}")
+                find_manifest(app_name, bucket_path)
+                bucket_name = bucket
+        else:
+            _, bucket_name = search_all_buckets(app_name, self.buckets_dir)
+
+        config = PoksConfig(
+            buckets=[PoksBucket(name=bucket_name, url="")],
+            apps=[PoksApp(name=app_name, version=app_version, bucket=bucket_name)],
+        )
+
+        self.install(config)
 
     def install(self, config_or_path: Path | PoksConfig) -> dict[str, str]:
         """

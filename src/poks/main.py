@@ -9,8 +9,6 @@ from py_app_dev.core.exceptions import UserNotificationException
 from py_app_dev.core.logging import logger, setup_logger, time_it
 
 from poks import __version__
-from poks.bucket import find_manifest, is_bucket_url, search_all_buckets, sync_bucket
-from poks.domain import PoksApp, PoksBucket, PoksConfig
 from poks.poks import Poks
 
 package_name = "poks"
@@ -60,35 +58,13 @@ def install(
         logger.error("Specify either -c/--config or app@version")
         raise typer.Exit(1)
 
-    if "@" not in app_spec:
-        logger.error(f"Invalid app spec '{app_spec}'. Use format: name@version")
-        raise typer.Exit(1)
-
-    app_name, app_version = app_spec.split("@", 1)
-
-    if bucket:
-        if is_bucket_url(bucket):
-            temp_bucket = PoksBucket(name="temp", url=bucket)
-            bucket_path = sync_bucket(temp_bucket, poks.buckets_dir)
-            find_manifest(app_name, bucket_path)
-            bucket_name = "temp"
-        else:
-            bucket_path = poks.buckets_dir / bucket
-            if not bucket_path.exists():
-                logger.error(f"Bucket '{bucket}' not found in {poks.buckets_dir}")
-                raise typer.Exit(1)
-            find_manifest(app_name, bucket_path)
-            bucket_name = bucket
-    else:
-        _, bucket_name = search_all_buckets(app_name, poks.buckets_dir)
-
-    config = PoksConfig(
-        buckets=[PoksBucket(name=bucket_name, url="")],
-        apps=[PoksApp(name=app_name, version=app_version, bucket=bucket_name)],
-    )
-
-    poks.install(config)
-    logger.info(f"Successfully installed {app_name}@{app_version}")
+    try:
+        poks.install_app(app_spec, bucket)
+        name, version = app_spec.split("@", 1)
+        logger.info(f"Successfully installed {name}@{version}")
+    except ValueError as e:
+        logger.error(str(e))
+        raise typer.Exit(1) from e
 
 
 @app.command(help="Uninstall apps.")
