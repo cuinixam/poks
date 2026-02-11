@@ -42,12 +42,12 @@ Extend the `install` command in `src/poks/main.py`:
 
 ## Acceptance Criteria
 
-- [ ] `poks install app@version` searches all local buckets and installs the app.
-- [ ] `poks install app@version --bucket name` searches only the named local bucket.
-- [ ] `poks install app@version --bucket <url>` clones the bucket and installs.
-- [ ] No local buckets and no URL → clear error.
-- [ ] `poks install -c poks.json` continues to work.
-- [ ] Providing both `-c` and a positional argument produces an error.
-- [ ] Install and uninstall commands print clear summaries.
-- [ ] CLI tests cover all install modes and the uninstall variants.
-- [ ] `pypeline run` passes.
+- [x] `poks install app@version` searches all local buckets and installs the app.
+- [x] `poks install app@version --bucket name` searches only the named local bucket.
+- [x] `poks install app@version --bucket <url>` clones the bucket and installs.
+- [x] No local buckets and no URL → clear error.
+- [x] `poks install -c poks.json` continues to work.
+- [x] Providing both `-c` and a positional argument produces an error.
+- [x] Install and uninstall commands print clear summaries.
+- [x] CLI tests cover all install modes and the uninstall variants.
+- [x] `pypeline run` passes.

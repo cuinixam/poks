@@ -9,6 +9,8 @@ from py_app_dev.core.exceptions import UserNotificationException
 from py_app_dev.core.logging import logger, setup_logger, time_it
 
 from poks import __version__
+from poks.bucket import find_manifest, is_bucket_url, search_all_buckets, sync_bucket
+from poks.domain import PoksApp, PoksBucket, PoksConfig
 from poks.poks import Poks
 
 package_name = "poks"
@@ -31,14 +33,62 @@ def version(
         raise typer.Exit()
 
 
-@app.command(help="Install apps from configuration file.")
+@app.command(help="Install apps from configuration file or install a single app.")
 @time_it("install")
 def install(
-    config_file: Annotated[Path, typer.Option("-c", "--config", help="Path to poks.json configuration file.")],
+    app_spec: Annotated[str | None, typer.Argument(help="App to install. Format: name@version")] = None,
+    config_file: Annotated[Path | None, typer.Option("-c", "--config", help="Path to poks.json configuration file.")] = None,
+    bucket: Annotated[str | None, typer.Option("--bucket", help="Bucket name or URL for single-app install.")] = None,
     root_dir: Annotated[Path, typer.Option("--root", help="Root directory for Poks.")] = DEFAULT_ROOT_DIR,
 ) -> None:
+    if config_file and app_spec:
+        logger.error("Cannot use both -c/--config and app@version. Choose one install mode.")
+        raise typer.Exit(1)
+
+    if not config_file and not app_spec:
+        logger.error("Specify either -c/--config or app@version")
+        raise typer.Exit(1)
+
     poks = Poks(root_dir=root_dir)
-    poks.install(config_file)
+
+    if config_file:
+        poks.install(config_file)
+        logger.info("Installation complete.")
+        return
+
+    if not app_spec:
+        logger.error("Specify either -c/--config or app@version")
+        raise typer.Exit(1)
+
+    if "@" not in app_spec:
+        logger.error(f"Invalid app spec '{app_spec}'. Use format: name@version")
+        raise typer.Exit(1)
+
+    app_name, app_version = app_spec.split("@", 1)
+
+    if bucket:
+        if is_bucket_url(bucket):
+            temp_bucket = PoksBucket(name="temp", url=bucket)
+            bucket_path = sync_bucket(temp_bucket, poks.buckets_dir)
+            find_manifest(app_name, bucket_path)
+            bucket_name = "temp"
+        else:
+            bucket_path = poks.buckets_dir / bucket
+            if not bucket_path.exists():
+                logger.error(f"Bucket '{bucket}' not found in {poks.buckets_dir}")
+                raise typer.Exit(1)
+            find_manifest(app_name, bucket_path)
+            bucket_name = bucket
+    else:
+        _, bucket_name = search_all_buckets(app_name, poks.buckets_dir)
+
+    config = PoksConfig(
+        buckets=[PoksBucket(name=bucket_name, url="")],
+        apps=[PoksApp(name=app_name, version=app_version, bucket=bucket_name)],
+    )
+
+    poks.install(config)
+    logger.info(f"Successfully installed {app_name}@{app_version}")
 
 
 @app.command(help="Uninstall apps.")
