@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from pathlib import Path
 
 from py_app_dev.core.logging import logger
@@ -10,8 +11,10 @@ from poks.bucket import (
     find_manifest,
     is_bucket_url,
     search_all_buckets,
+    search_apps_in_buckets,
     sync_all_buckets,
     sync_bucket,
+    update_local_buckets,
 )
 from poks.domain import PoksApp, PoksAppVersion, PoksBucket, PoksConfig, PoksManifest
 from poks.downloader import get_cached_or_download
@@ -232,3 +235,20 @@ class Poks:
             logger.info(f"Uninstalling all versions of {app_name}")
             shutil.rmtree(app_dir)
             logger.info(f"Removed {app_name}")
+
+    def search(self, query: str, update: bool = True) -> builtins.list[str]:
+        """
+        Search for apps in all local buckets.
+
+        Args:
+            query: Search term.
+            update: If True, update buckets before searching.
+
+        Returns:
+            List of matching app names.
+
+        """
+        if update:
+            update_local_buckets(self.buckets_dir)
+
+        return search_apps_in_buckets(query, self.buckets_dir)

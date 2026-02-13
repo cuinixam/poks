@@ -31,6 +31,25 @@ def version(
         raise typer.Exit()
 
 
+@app.command(help="Search for apps in available buckets.")
+@time_it("search")
+def search(
+    query: Annotated[str, typer.Argument(help="Search query (substring).")],
+    update: Annotated[bool, typer.Option("--update/--no-update", help="Update buckets before searching.")] = True,
+    root_dir: Annotated[Path, typer.Option("--root", help="Root directory for Poks.")] = DEFAULT_ROOT_DIR,
+) -> None:
+    poks = Poks(root_dir=root_dir)
+    results = poks.search(query, update=update)
+
+    if not results:
+        typer.echo(f"No apps found matching '{query}'.")
+        return
+
+    typer.echo(f"Found {len(results)} matching apps:")
+    for app_name in results:
+        typer.echo(f"  {app_name}")
+
+
 @app.command(help="Install apps from configuration file or install a single app.")
 @time_it("install")
 def install(

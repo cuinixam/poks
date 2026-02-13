@@ -66,3 +66,60 @@ def search_all_buckets(app_name: str, buckets_dir: Path) -> tuple[Path, str]:
             return manifest_path, bucket_dir.name
 
     raise FileNotFoundError(f"Manifest '{app_name}.json' not found in any local bucket")
+
+
+def search_apps_in_buckets(query: str, buckets_dir: Path) -> list[str]:
+    """
+    Search for apps in all local buckets matching the query.
+
+    Args:
+        query: Search term (case-insensitive substring).
+        buckets_dir: Directory containing local buckets.
+
+    Returns:
+        Sorted list of matching app names.
+
+    """
+    matches = set()
+    if not buckets_dir.exists():
+        return []
+
+    query = query.lower()
+
+    for bucket_dir in buckets_dir.iterdir():
+        if not bucket_dir.is_dir():
+            continue
+
+        for item in bucket_dir.iterdir():
+            if item.suffix == ".json" and item.is_file():
+                app_name = item.stem
+                if query in app_name.lower():
+                    matches.add(app_name)
+
+    return sorted(matches)
+
+
+def update_local_buckets(buckets_dir: Path) -> None:
+    """
+    Update all local buckets that are git repositories.
+
+    Args:
+        buckets_dir: Directory containing local buckets.
+
+    """
+    if not buckets_dir.exists():
+        return
+
+    for bucket_dir in buckets_dir.iterdir():
+        if not bucket_dir.is_dir():
+            continue
+
+        # Check if it's a git repo
+        if (bucket_dir / ".git").exists():
+            try:
+                logger.info(f"Updating bucket '{bucket_dir.name}'...")
+                repo = Repo(bucket_dir)
+                repo.remotes.origin.fetch()
+                repo.head.reset(repo.active_branch.tracking_branch(), index=True, working_tree=True)
+            except Exception as e:
+                logger.warning(f"Failed to update bucket '{bucket_dir.name}': {e}")
