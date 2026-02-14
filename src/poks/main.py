@@ -77,6 +77,7 @@ def install(
     app_spec: Annotated[str | None, typer.Argument(help="App to install. Format: name@version")] = None,
     config_file: Annotated[Path | None, typer.Option("-c", "--config", help="Path to poks.json configuration file.")] = None,
     bucket: Annotated[str | None, typer.Option("--bucket", help="Bucket name or URL for single-app install.")] = None,
+    cache: Annotated[bool, typer.Option("--cache/--no-cache", help="Use download cache.")] = True,
     root_dir: Annotated[Path, typer.Option("--root", help="Root directory for Poks.")] = DEFAULT_ROOT_DIR,
 ) -> None:
     if config_file and app_spec:
@@ -94,7 +95,7 @@ def install(
         TransferSpeedColumn(),
         TimeRemainingColumn(),
     ) as progress:
-        poks = Poks(root_dir=root_dir, progress_callback=_create_progress_callback(progress))
+        poks = Poks(root_dir=root_dir, progress_callback=_create_progress_callback(progress), use_cache=cache)
 
         if config_file:
             poks.install(config_file)
@@ -114,18 +115,19 @@ def install(
 def uninstall(
     app_spec: Annotated[str | None, typer.Argument(help="App to uninstall. Format: name or name@version")] = None,
     all_apps: Annotated[bool, typer.Option("--all", help="Uninstall all apps.")] = False,
+    wipe: Annotated[bool, typer.Option("--wipe", help="Also remove the download cache.")] = False,
     root_dir: Annotated[Path, typer.Option("--root", help="Root directory for Poks.")] = DEFAULT_ROOT_DIR,
 ) -> None:
     poks = Poks(root_dir=root_dir)
 
     if all_apps:
-        poks.uninstall(all_apps=True)
+        poks.uninstall(all_apps=True, wipe=wipe)
     elif app_spec:
         if "@" in app_spec:
             name, version = app_spec.split("@", 1)
-            poks.uninstall(app_name=name, version=version)
+            poks.uninstall(app_name=name, version=version, wipe=wipe)
         else:
-            poks.uninstall(app_name=app_spec)
+            poks.uninstall(app_name=app_spec, wipe=wipe)
     else:
         logger.error("Specify an app to uninstall or use --all")
         raise typer.Exit(1)

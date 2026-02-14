@@ -95,6 +95,7 @@ def get_cached_or_download(
     cache_dir: Path,
     app_name: str = "",
     progress_callback: ProgressCallback | None = None,
+    use_cache: bool = True,
 ) -> Path:
     """
     Return a cached copy of the archive, downloading if necessary.
@@ -108,13 +109,14 @@ def get_cached_or_download(
         cache_dir: Directory used for caching downloaded archives.
         app_name: Application name passed to the progress callback.
         progress_callback: Optional callback invoked during download.
+        use_cache: If False, skip the cache and always download.
 
     Returns:
         Path to the verified archive in the cache.
 
     """
     cached = _cache_path_for(url, cache_dir)
-    if cached.exists():
+    if use_cache and cached.exists():
         try:
             verify_sha256(cached, sha256)
             logger.info(f"Cache hit: {cached}")

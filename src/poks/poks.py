@@ -32,6 +32,7 @@ class Poks:
         self,
         root_dir: Path,
         progress_callback: ProgressCallback | None = None,
+        use_cache: bool = True,
     ) -> None:
         """
         Initialize Poks with a root directory.
@@ -40,6 +41,7 @@ class Poks:
             root_dir: Root directory for Poks (apps, buckets, cache).
             progress_callback: Optional callback invoked during downloads
                 with ``(app_name, bytes_downloaded, total_bytes_or_none)``.
+            use_cache: If False, skip the download cache and always re-download.
 
         """
         self.root_dir = root_dir
@@ -47,6 +49,7 @@ class Poks:
         self.buckets_dir = root_dir / "buckets"
         self.cache_dir = root_dir / "cache"
         self.progress_callback = progress_callback
+        self.use_cache = use_cache
 
     def install_app(self, app_spec: str, bucket: str | None = None) -> InstalledApp:
         """
@@ -239,6 +242,7 @@ class Poks:
                 self.cache_dir,
                 app_name=app.name,
                 progress_callback=self.progress_callback,
+                use_cache=self.use_cache,
             )
             extract_archive(archive_path, install_dir, app_version.extract_dir)
 
@@ -321,7 +325,7 @@ class Poks:
                 env[k] = v.replace("${dir}", dir_str)
         return InstalledApp(name=name, version=version, install_dir=install_dir, bin_dirs=bin_dirs, env=env)
 
-    def uninstall(self, app_name: str | None = None, version: str | None = None, all_apps: bool = False) -> None:
+    def uninstall(self, app_name: str | None = None, version: str | None = None, all_apps: bool = False, wipe: bool = False) -> None:
         """
         Uninstall apps.
 
@@ -329,6 +333,7 @@ class Poks:
             app_name: Name of the app to uninstall.
             version: Specific version to uninstall.
             all_apps: If True, uninstalls all apps.
+            wipe: If True, also remove the download cache.
 
         Raises:
             ValueError: If the specified app or version does not exist.
@@ -342,6 +347,9 @@ class Poks:
                 if item.is_dir():
                     shutil.rmtree(item)
                     logger.info(f"Removed {item.name}")
+            if wipe and self.cache_dir.exists():
+                shutil.rmtree(self.cache_dir)
+                logger.info("Removed download cache")
             return
 
         if not app_name:
@@ -366,6 +374,10 @@ class Poks:
             logger.info(f"Uninstalling all versions of {app_name}")
             shutil.rmtree(app_dir)
             logger.info(f"Removed {app_name}")
+
+        if wipe and self.cache_dir.exists():
+            shutil.rmtree(self.cache_dir)
+            logger.info("Removed download cache")
 
     def search(self, query: str, update: bool = True) -> list[str]:
         """
