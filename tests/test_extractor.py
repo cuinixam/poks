@@ -98,3 +98,46 @@ def test_extract_dir_missing_raises(tmp_path):
     dest = tmp_path / "out"
     with pytest.raises(ValueError, match="extract_dir 'nonexistent' not found"):
         extract_archive(archive, dest, extract_dir="nonexistent")
+
+
+# -- path traversal protection -----------------------------------------------
+
+
+def _create_zip_with_traversal(path: Path) -> Path:
+    archive = path / "malicious.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("../escape.txt", "pwned")
+    return archive
+
+
+def _create_tar_with_traversal(path: Path) -> Path:
+    archive = path / "malicious.tar.gz"
+    with tarfile.open(archive, "w:gz") as tf:
+        info = tarfile.TarInfo(name="../escape.txt")
+        data = b"pwned"
+        info.size = len(data)
+        tf.addfile(info, BytesIO(data))
+    return archive
+
+
+def test_zip_path_traversal_rejected(tmp_path):
+    archive = _create_zip_with_traversal(tmp_path)
+    dest = tmp_path / "out"
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        extract_archive(archive, dest)
+
+
+def test_tar_path_traversal_rejected(tmp_path):
+    archive = _create_tar_with_traversal(tmp_path)
+    dest = tmp_path / "out"
+    # Python 3.12+ raises tarfile.OutsideDestinationError via data_filter;
+    # older versions hit our _validate_entry_paths raising ValueError.
+    with pytest.raises((ValueError, tarfile.OutsideDestinationError)):
+        extract_archive(archive, dest)
+
+
+def test_extract_dir_traversal_rejected(tmp_path):
+    archive = _create_zip(tmp_path)
+    dest = tmp_path / "out"
+    with pytest.raises(ValueError, match="escapes destination directory"):
+        extract_archive(archive, dest, extract_dir="../../etc")

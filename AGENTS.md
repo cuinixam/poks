@@ -11,14 +11,34 @@ Poks is a cross-platform, user-space package manager for downloading pre-built b
 - **Build System**: Poetry Core
 - **Automation**: `pypeline-runner`
 
+### Architecture
+
+**CLI** (`main.py`) → **Orchestrator** (`poks.py`) → domain services:
+
+| Module | Responsibility |
+|--------|---------------|
+| `bucket.py` | Git-based bucket sync, registry (`buckets.json`), manifest lookup, search |
+| `downloader.py` | HTTP download + SHA256 verification + file caching |
+| `extractor.py` | Archive extraction (zip, tar.gz, xz, bz2, 7z) |
+| `resolver.py` | Variable expansion (`${version}`, `${os}`, `${arch}`, `${ext}`, `${dir}`) |
+| `environment.py` | Environment variable collection and merging |
+| `platform.py` | OS/arch detection |
+| `domain/models.py` | All dataclass models using `mashumaro` with `PoksJsonMixin` |
+
+**Installation flow**: parse config → register/sync buckets → for each app: platform check → find manifest → select version → resolve archive → download (cached, SHA256-verified) → extract → write receipt → collect env vars.
+
+**Runtime directory** (`~/.poks/`): `apps/<name>/<version>/`, `buckets/<id>/`, `cache/`. Bucket IDs are `sha256(normalized_url)[:12]`.
+
 ### Key Files
 
 | Path | Description |
 |------|-------------|
-| `src/poks/poks.py` | Core `Poks` class - package manager implementation |
+| `src/poks/poks.py` | Core `Poks` class - package manager orchestrator |
 | `src/poks/main.py` | CLI entry point using Typer |
-| `docs/specs.md` | Full specification and design document |
+| `src/poks/domain/models.py` | All domain dataclass models |
+| `docs/specs.md` | Full specification and design document (authoritative) |
 | `pyproject.toml` | Project configuration, dependencies, and tool settings |
+| `tests/conftest.py` | `PoksEnv` fixture - full test harness with fake Git buckets and archives |
 
 ## Development Guidelines
 

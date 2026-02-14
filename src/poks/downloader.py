@@ -5,11 +5,12 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 from urllib.error import URLError
-from urllib.request import urlretrieve
+from urllib.request import urlopen
 
 from py_app_dev.core.logging import logger
 
 _HASH_CHUNK_SIZE = 8192
+_DOWNLOAD_TIMEOUT = 60
 
 
 class DownloadError(Exception):
@@ -37,7 +38,9 @@ def download_file(url: str, dest: Path) -> Path:
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
-        urlretrieve(url, dest)  # noqa: S310
+        with urlopen(url, timeout=_DOWNLOAD_TIMEOUT) as response, dest.open("wb") as fh:  # noqa: S310
+            while chunk := response.read(_HASH_CHUNK_SIZE):
+                fh.write(chunk)
     except (URLError, OSError) as exc:
         raise DownloadError(f"Failed to download {url}: {exc}") from exc
     logger.info(f"Downloaded {url} -> {dest}")

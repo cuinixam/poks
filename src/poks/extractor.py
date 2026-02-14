@@ -34,6 +34,15 @@ def _detect_format(archive_path: Path) -> str:
     raise ValueError(f"Unsupported archive format: {archive_path.name}. Supported: {supported}")
 
 
+def _validate_entry_paths(names: list[str], dest_dir: Path) -> None:
+    """Reject archive entries that would escape *dest_dir* via path traversal."""
+    resolved_dest = dest_dir.resolve()
+    for name in names:
+        target = (dest_dir / name).resolve()
+        if not target.is_relative_to(resolved_dest):
+            raise ValueError(f"Path traversal detected in archive entry: {name!r}")
+
+
 @contextmanager
 def _open_archive(archive_path: Path, fmt: str) -> Generator[Any, None, None]:
     """Open an archive file and yield the archive object."""
@@ -50,20 +59,25 @@ def _open_archive(archive_path: Path, fmt: str) -> Generator[Any, None, None]:
 
 
 def _extract_all(archive: Any, fmt: str, dest_dir: Path) -> None:
-    """Extract all contents of an archive into dest_dir."""
+    """Extract all contents of an archive into dest_dir after validating paths."""
     if fmt == "zip":
-        archive.extractall(dest_dir)  # noqa: S202
+        _validate_entry_paths(archive.namelist(), dest_dir)
+        archive.extractall(dest_dir)  # noqa: S202 — entry paths validated above
     elif fmt == "7z":
-        archive.extractall(path=dest_dir)  # noqa: S202
+        _validate_entry_paths(archive.getnames(), dest_dir)
+        archive.extractall(path=dest_dir)  # noqa: S202 — entry paths validated above
     elif hasattr(tarfile, "data_filter"):
         archive.extractall(dest_dir, filter="data")
     else:
-        archive.extractall(dest_dir)  # noqa: S202
+        _validate_entry_paths([member.name for member in archive.getmembers()], dest_dir)
+        archive.extractall(dest_dir)  # noqa: S202 — entry paths validated above
 
 
 def _relocate_extract_dir(dest_dir: Path, extract_dir: str) -> None:
     """Move contents of dest_dir/extract_dir into dest_dir."""
     source = dest_dir / extract_dir
+    if not source.resolve().is_relative_to(dest_dir.resolve()):
+        raise ValueError(f"extract_dir '{extract_dir}' escapes destination directory")
     if not source.is_dir():
         raise ValueError(f"extract_dir '{extract_dir}' not found in extracted archive")
     for item in source.iterdir():
