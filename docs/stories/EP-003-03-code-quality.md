@@ -40,13 +40,13 @@ This is unreachable because line 65 already exits when `app_spec` is falsy.
 
 ## Acceptance Criteria
 
-- [ ] Remove the dead code block in `main.py:76-78`.
-- [ ] Extract a `_pull_repo(repo_path)` helper in `bucket.py` used by both `sync_bucket` and `update_local_buckets`.
-- [ ] Replace `bucket_paths[app.bucket]` with a `.get()` + descriptive `ValueError`.
-- [ ] Guard `uninstall(all_apps=True)` against missing `apps_dir`.
-- [ ] Remove or narrow the `except Exception` in `_resolve_installed_bucket`.
-- [ ] Fix the typo in `pyproject.toml`.
-- [ ] All existing tests continue to pass.
+- [x] Remove the dead code block in `main.py:76-78`.
+- [x] Extract a `_pull_repo(repo_path)` helper in `bucket.py` used by both `sync_bucket` and `update_local_buckets`.
+- [x] Replace `bucket_paths[app.bucket]` with a `.get()` + descriptive `ValueError`.
+- [x] Guard `uninstall(all_apps=True)` against missing `apps_dir`.
+- [x] Remove or narrow the `except Exception` in `_resolve_installed_bucket`.
+- [x] Fix the typo in `pyproject.toml`.
+- [x] All existing tests continue to pass.
 
 ## Files to Modify
 

@@ -16,7 +16,7 @@ DEFAULT_ROOT_DIR = Path.home() / ".poks"
 
 app = typer.Typer(
     name=package_name,
-    help="A lightweight archive downloader for pre-build binary dependencies.",
+    help="A lightweight archive downloader for pre-built binary dependencies.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -71,19 +71,14 @@ def install(
     if config_file:
         poks.install(config_file)
         logger.info("Installation complete.")
-        return
-
-    if not app_spec:
-        logger.error("Specify either -c/--config or app@version")
-        raise typer.Exit(1)
-
-    try:
-        poks.install_app(app_spec, bucket)
-        name, version = app_spec.split("@", 1)
-        logger.info(f"Successfully installed {name}@{version}")
-    except ValueError as e:
-        logger.error(str(e))
-        raise typer.Exit(1) from e
+    elif app_spec:
+        try:
+            poks.install_app(app_spec, bucket)
+            name, version = app_spec.split("@", 1)
+            logger.info(f"Successfully installed {name}@{version}")
+        except ValueError as e:
+            logger.error(str(e))
+            raise typer.Exit(1) from e
 
 
 @app.command(help="Uninstall apps.")

@@ -45,6 +45,13 @@ def save_registry(registry: PoksBucketRegistry, registry_path: Path) -> None:
         logger.error(f"Unexpected error saving registry to {registry_path}: {e}")
 
 
+def _pull_repo(repo_path: Path) -> None:
+    """Fetch and reset a local git repository to match its remote tracking branch."""
+    repo = Repo(repo_path)
+    repo.remotes.origin.fetch()
+    repo.head.reset(repo.active_branch.tracking_branch(), index=True, working_tree=True)
+
+
 def sync_bucket(bucket: PoksBucket, buckets_dir: Path) -> Path:
     """Clone or pull a bucket repository and return its local path."""
     # Use ID if available, otherwise name (legacy/config)
@@ -58,9 +65,7 @@ def sync_bucket(bucket: PoksBucket, buckets_dir: Path) -> Path:
     if local_path.exists():
         logger.info(f"Pulling latest for bucket '{bucket.name or bucket.id}'")
         try:
-            repo = Repo(local_path)
-            repo.remotes.origin.fetch()
-            repo.head.reset(repo.active_branch.tracking_branch(), index=True, working_tree=True)
+            _pull_repo(local_path)
         except (GitCommandError, InvalidGitRepositoryError, NoSuchPathError) as e:
             logger.warning(f"Failed to update bucket '{bucket.name or bucket.id}': {e}")
         except Exception as e:
@@ -179,9 +184,7 @@ def update_local_buckets(buckets_dir: Path) -> None:
         if (bucket_dir / ".git").exists():
             try:
                 logger.info(f"Updating bucket '{bucket_dir.name}'...")
-                repo = Repo(bucket_dir)
-                repo.remotes.origin.fetch()
-                repo.head.reset(repo.active_branch.tracking_branch(), index=True, working_tree=True)
+                _pull_repo(bucket_dir)
             except (GitCommandError, InvalidGitRepositoryError) as e:
                 logger.warning(f"Failed to update bucket '{bucket_dir.name}': {e}")
             except Exception as e:

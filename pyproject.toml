@@ -1,7 +1,7 @@
 [project]
 name = "poks"
 version = "0.2.0"
-description = "A lightweight archive downloader for pre-build binary dependencies."
+description = "A lightweight archive downloader for pre-built binary dependencies."
 readme = "README.md"
 license = "MIT"
 authors = [

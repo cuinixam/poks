@@ -187,7 +187,10 @@ class Poks:
             logger.info(f"Skipping {app.name}: not supported on {current_os}/{current_arch}")
             return
 
-        manifest_path = find_manifest(app.name, bucket_paths[app.bucket])
+        bucket_path = bucket_paths.get(app.bucket)
+        if not bucket_path:
+            raise ValueError(f"Bucket '{app.bucket}' not found. Available buckets: {', '.join(bucket_paths)}")
+        manifest_path = find_manifest(app.name, bucket_path)
         manifest = PoksManifest.from_json_file(manifest_path)
 
         app_version = next((v for v in manifest.versions if v.version == app.version), None)
@@ -283,8 +286,6 @@ class Poks:
                 return (reg_bucket.name or reg_bucket.url) if reg_bucket else bucket_id
         except json.JSONDecodeError:
             logger.debug(f"Failed to parse receipt at {receipt_path}")
-        except Exception as e:
-            logger.debug(f"Unexpected error reading receipt at {receipt_path}: {e}")
 
         return "unknown"
 
@@ -328,6 +329,8 @@ class Poks:
         """
         if all_apps:
             logger.info("Uninstalling all apps")
+            if not self.apps_dir.exists():
+                return
             for item in self.apps_dir.iterdir():
                 if item.is_dir():
                     shutil.rmtree(item)
