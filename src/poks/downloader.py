@@ -38,7 +38,7 @@ def download_file(url: str, dest: Path) -> Path:
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with urlopen(url, timeout=_DOWNLOAD_TIMEOUT) as response, dest.open("wb") as fh:  # noqa: S310
+        with urlopen(url, timeout=_DOWNLOAD_TIMEOUT) as response, dest.open("wb") as fh:
             while chunk := response.read(_HASH_CHUNK_SIZE):
                 fh.write(chunk)
     except (URLError, OSError) as exc:

@@ -26,11 +26,11 @@ These should be addressed by fixing the underlying code (covered in EP-003-01) a
 
 ## Acceptance Criteria
 
-- [ ] Change `from_json_file` return type to `Self` (using `typing.Self` for 3.11+ or `typing_extensions.Self` with conditional import for 3.10 compatibility).
-- [ ] Verify all subclass usages of `from_json_file` benefit from the corrected return type.
-- [ ] Remove `noqa` comments once the underlying code is fixed (depends on EP-003-01).
-- [ ] All existing tests continue to pass.
-- [ ] `pypeline run` passes with zero failures.
+- [x] Change `from_json_file` return type to `Self` (using `typing.Self` for 3.11+ or `typing_extensions.Self` with conditional import for 3.10 compatibility).
+- [x] Verify all subclass usages of `from_json_file` benefit from the corrected return type.
+- [x] Remove `noqa` comments once the underlying code is fixed (depends on EP-003-01).
+- [x] All existing tests continue to pass.
+- [x] `pypeline run` passes with zero failures.
 
 ## Files to Modify
 

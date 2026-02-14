@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 from mashumaro.config import BaseConfig
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -18,7 +24,7 @@ class PoksJsonMixin(DataClassJSONMixin):
         omit_none = True
 
     @classmethod
-    def from_json_file(cls, file_path: Path) -> PoksJsonMixin:
+    def from_json_file(cls, file_path: Path) -> Self:
         return cls.from_dict(json.loads(file_path.read_text()))
 
     def to_json_string(self) -> str:
