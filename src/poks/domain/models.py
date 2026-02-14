@@ -27,11 +27,21 @@ class PoksJsonMixin(DataClassJSONMixin):
     def from_json_file(cls, file_path: Path) -> Self:
         return cls.from_dict(json.loads(file_path.read_text()))
 
+    @classmethod
+    def from_file(cls, file_path: Path) -> Self:
+        return cls.from_json_file(file_path)
+
     def to_json_string(self) -> str:
         return json.dumps(self.to_dict(), indent=2)
 
+    def to_string(self) -> str:
+        return self.to_json_string()
+
     def to_json_file(self, file_path: Path) -> None:
         file_path.write_text(self.to_json_string())
+
+    def to_file(self, file_path: Path) -> None:
+        self.to_json_file(file_path)
 
 
 @dataclass
@@ -156,6 +166,48 @@ class PoksAppEnv(PoksJsonMixin):
 
     dirs: list[str] | None = None
     env: dict[str, str] | None = None
+
+
+@dataclass
+class InstalledApp:
+    """An installed application with resolved paths and environment."""
+
+    #: Application name
+    name: str
+    #: Installed version
+    version: str
+    #: Absolute path to the version install directory
+    install_dir: Path
+    #: Absolute paths to directories that should be added to PATH
+    bin_dirs: list[Path]
+    #: Resolved environment variables (${dir} already expanded)
+    env: dict[str, str]
+
+
+@dataclass
+class InstallResult:
+    """Result of an install or list operation, containing per-app details and aggregated helpers."""
+
+    #: Installed apps in config order
+    apps: list[InstalledApp]
+
+    @property
+    def dirs(self) -> list[Path]:
+        """Unique bin directories across all apps, preserving config order."""
+        seen: dict[Path, None] = {}
+        for app in self.apps:
+            for d in app.bin_dirs:
+                seen.setdefault(d, None)
+        return list(seen)
+
+    @property
+    def env(self) -> dict[str, str]:
+        """Merged non-PATH environment variables from all apps (last-writer-wins on conflicts)."""
+        merged: dict[str, str] = {}
+        for app in self.apps:
+            for key, value in app.env.items():
+                merged[key] = value
+        return merged
 
 
 @dataclass

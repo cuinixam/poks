@@ -17,9 +17,8 @@ from poks.bucket import (
     sync_all_buckets,
     update_local_buckets,
 )
-from poks.domain import PoksApp, PoksAppEnv, PoksBucket, PoksBucketRegistry, PoksConfig, PoksManifest
+from poks.domain import InstalledApp, InstallResult, PoksApp, PoksAppVersion, PoksBucket, PoksBucketRegistry, PoksConfig, PoksManifest
 from poks.downloader import get_cached_or_download
-from poks.environment import collect_env_updates, merge_env_updates
 from poks.extractor import extract_archive
 from poks.platform import get_current_platform
 from poks.resolver import resolve_archive, resolve_download_url
@@ -41,13 +40,16 @@ class Poks:
         self.buckets_dir = root_dir / "buckets"
         self.cache_dir = root_dir / "cache"
 
-    def install_app(self, app_spec: str, bucket: str | None = None) -> None:
+    def install_app(self, app_spec: str, bucket: str | None = None) -> InstalledApp:
         """
         Install a single application.
 
         Args:
             app_spec: Application specification (name@version).
             bucket: Optional bucket name or URL.
+
+        Returns:
+            Details about the installed application.
 
         Raises:
             ValueError: If app_spec is invalid or bucket is not found.
@@ -73,7 +75,8 @@ class Poks:
             apps=[PoksApp(name=app_name, version=app_version, bucket=bucket_ref)],
         )
 
-        self.install(config)
+        result = self.install(config)
+        return result.apps[0]
 
     def _resolve_bucket(self, bucket_arg: str | None, app_name: str, registry: PoksBucketRegistry) -> PoksBucket:
         """Resolve the bucket logic for installation to avoid nesting."""
@@ -129,7 +132,7 @@ class Poks:
         # Legacy/unregistered local bucket
         return PoksBucket(name=found_bucket_name, url="")
 
-    def install(self, config_or_path: Path | PoksConfig) -> dict[str, str]:
+    def install(self, config_or_path: Path | PoksConfig) -> InstallResult:
         """
         Install apps from a configuration file or config object.
 
@@ -137,7 +140,7 @@ class Poks:
             config_or_path: Path to poks.json or a PoksConfig object.
 
         Returns:
-            Dictionary of environment variable updates.
+            Install result with per-app details and aggregated environment helpers.
 
         """
         config = PoksConfig.from_json_file(config_or_path) if isinstance(config_or_path, Path) else config_or_path
@@ -147,12 +150,14 @@ class Poks:
 
         current_os, current_arch = get_current_platform()
         bucket_paths = sync_all_buckets(config.buckets, self.buckets_dir)
-        env_updates: list[dict[str, str]] = []
+        installed_apps: list[InstalledApp] = []
 
         for app in config.apps:
-            self._install_single_app(app, bucket_paths, config.buckets, current_os, current_arch, env_updates)
+            installed = self._install_single_app(app, bucket_paths, config.buckets, current_os, current_arch)
+            if installed:
+                installed_apps.append(installed)
 
-        return merge_env_updates(env_updates)
+        return InstallResult(apps=installed_apps)
 
     def _ensure_buckets_registered(self, buckets: list[PoksBucket]) -> None:
         registry = load_registry(self.buckets_dir / "buckets.json")
@@ -181,11 +186,10 @@ class Poks:
         buckets_list: list[PoksBucket],
         current_os: str,
         current_arch: str,
-        env_updates: list[dict[str, str]],
-    ) -> None:
+    ) -> InstalledApp | None:
         if not app.is_supported(current_os, current_arch):
             logger.info(f"Skipping {app.name}: not supported on {current_os}/{current_arch}")
-            return
+            return None
 
         bucket_path = bucket_paths.get(app.bucket)
         if not bucket_path:
@@ -202,23 +206,20 @@ class Poks:
             raise ValueError(f"Version {app.version} of {app.name} is yanked: {app_version.yanked}")
 
         install_dir = self.apps_dir / app.name / app.version
-        if install_dir.exists():
+        if not install_dir.exists():
+            archive = resolve_archive(app_version, current_os, current_arch)
+            url = resolve_download_url(app_version, archive)
+            archive_path = get_cached_or_download(url, archive.sha256, self.cache_dir)
+            extract_archive(archive_path, install_dir, app_version.extract_dir)
+
+            # Persist manifest and receipt for future reference
+            (install_dir / ".manifest.json").write_text(manifest.to_json_string())
+            self._create_receipt(install_dir, app.bucket, buckets_list)
+            logger.info(f"Installed {app.name}@{app.version}")
+        else:
             logger.info(f"Skipping {app.name}@{app.version}: already installed")
-            env_updates.append(collect_env_updates(app_version, install_dir))
-            return
 
-        archive = resolve_archive(app_version, current_os, current_arch)
-        url = resolve_download_url(app_version, archive)
-        archive_path = get_cached_or_download(url, archive.sha256, self.cache_dir)
-        extract_archive(archive_path, install_dir, app_version.extract_dir)
-
-        # Persist manifest and receipt for future reference
-        (install_dir / ".manifest.json").write_text(manifest.to_json_string())
-
-        self._create_receipt(install_dir, app.bucket, buckets_list)
-
-        logger.info(f"Installed {app.name}@{app.version}")
-        env_updates.append(collect_env_updates(app_version, install_dir))
+        return self._build_installed_app(app.name, app.version, install_dir, app_version)
 
     def _create_receipt(self, install_dir: Path, bucket_ref: str, buckets_list: list[PoksBucket]) -> None:
         receipt: dict[str, str | None] = {"bucket_id": None, "bucket_name": None, "bucket_url": None}
@@ -231,19 +232,17 @@ class Poks:
 
         (install_dir / ".receipt.json").write_text(json.dumps(receipt, indent=2))
 
-    def list_installed(self) -> list[PoksApp]:
+    def list_installed(self) -> InstallResult:
         """
         List all installed applications.
 
         Returns:
-            List of PoksApp objects with populated details (version, dirs, env).
+            Install result with per-app details and aggregated environment helpers.
 
         """
-        installed_apps = []
+        installed_apps: list[InstalledApp] = []
         if not self.apps_dir.exists():
-            return []
-
-        registry = load_registry(self.buckets_dir / "buckets.json")
+            return InstallResult(apps=[])
 
         for app_dir in self.apps_dir.iterdir():
             if not app_dir.is_dir():
@@ -253,45 +252,18 @@ class Poks:
                 if not version_dir.is_dir():
                     continue
 
-                installed_apps.append(self._get_installed_app_details(app_dir.name, version_dir, registry))
+                installed = self._load_installed_app(app_dir.name, version_dir)
+                if installed:
+                    installed_apps.append(installed)
 
-        return installed_apps
+        return InstallResult(apps=installed_apps)
 
-    def _get_installed_app_details(self, app_name: str, version_dir: Path, registry: PoksBucketRegistry) -> PoksApp:
+    def _load_installed_app(self, app_name: str, version_dir: Path) -> InstalledApp | None:
         version = version_dir.name
         manifest_path = version_dir / ".manifest.json"
 
-        bucket = self._resolve_installed_bucket(version_dir, registry)
-        app_env = self._resolve_installed_env_and_dirs(app_name, version, version_dir, manifest_path)
-
-        return PoksApp(name=app_name, version=version, bucket=bucket, dirs=app_env.dirs, env=app_env.env)
-
-    def _resolve_installed_bucket(self, version_dir: Path, registry: PoksBucketRegistry) -> str:
-        receipt_path = version_dir / ".receipt.json"
-        if not receipt_path.exists():
-            return "unknown"
-
-        try:
-            receipt = json.loads(receipt_path.read_text())
-            bucket_name = receipt.get("bucket_name")
-            bucket_url = receipt.get("bucket_url")
-            bucket_id = receipt.get("bucket_id")
-
-            if bucket_name:
-                return bucket_name
-            if bucket_url:
-                return bucket_url
-            if bucket_id:
-                reg_bucket = registry.get_by_id(bucket_id)
-                return (reg_bucket.name or reg_bucket.url) if reg_bucket else bucket_id
-        except json.JSONDecodeError:
-            logger.debug(f"Failed to parse receipt at {receipt_path}")
-
-        return "unknown"
-
-    def _resolve_installed_env_and_dirs(self, app_name: str, version: str, version_dir: Path, manifest_path: Path) -> PoksAppEnv:
         if not manifest_path.exists():
-            return PoksAppEnv()
+            return InstalledApp(name=app_name, version=version, install_dir=version_dir, bin_dirs=[], env={})
 
         try:
             manifest = PoksManifest.from_json_file(manifest_path)
@@ -299,20 +271,23 @@ class Poks:
 
             if not app_version:
                 logger.warning(f"Version {version} not found in stored manifest for {app_name}")
-                return PoksAppEnv()
+                return InstalledApp(name=app_name, version=version, install_dir=version_dir, bin_dirs=[], env={})
 
-            dirs = [str(version_dir / b) for b in app_version.bin] if app_version.bin else None
-
-            env = {}
-            if app_version.env:
-                for k, v in app_version.env.items():
-                    env[k] = v.replace("${dir}", str(version_dir))
-
-            return PoksAppEnv(dirs=dirs, env=(env or None))
+            return self._build_installed_app(app_name, version, version_dir, app_version)
 
         except Exception as e:
             logger.warning(f"Failed to load manifest for {app_name}@{version}: {e}")
-            return PoksAppEnv()
+            return InstalledApp(name=app_name, version=version, install_dir=version_dir, bin_dirs=[], env={})
+
+    @staticmethod
+    def _build_installed_app(name: str, version: str, install_dir: Path, app_version: PoksAppVersion) -> InstalledApp:
+        bin_dirs = [install_dir / entry for entry in app_version.bin] if app_version.bin else []
+        env: dict[str, str] = {}
+        if app_version.env:
+            dir_str = str(install_dir)
+            for k, v in app_version.env.items():
+                env[k] = v.replace("${dir}", dir_str)
+        return InstalledApp(name=name, version=version, install_dir=install_dir, bin_dirs=bin_dirs, env=env)
 
     def uninstall(self, app_name: str | None = None, version: str | None = None, all_apps: bool = False) -> None:
         """

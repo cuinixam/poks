@@ -1,4 +1,6 @@
 from poks.domain.models import (
+    InstalledApp,
+    InstallResult,
     PoksApp,
     PoksAppEnv,
     PoksAppVersion,
@@ -10,6 +12,8 @@ from poks.domain.models import (
 )
 
 __all__ = [
+    "InstallResult",
+    "InstalledApp",
     "PoksApp",
     "PoksAppEnv",
     "PoksAppVersion",

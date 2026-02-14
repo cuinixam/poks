@@ -109,18 +109,17 @@ def list_apps(
     root_dir: Annotated[Path, typer.Option("--root", help="Root directory for Poks.")] = DEFAULT_ROOT_DIR,
 ) -> None:
     poks = Poks(root_dir=root_dir)
-    apps = poks.list_installed()
+    result = poks.list_installed()
 
-    if not apps:
+    if not result.apps:
         typer.echo("No apps installed.")
         return
 
     # Simple table formatting
-    # Header
-    typer.echo(f"{'Name':<20} {'Version':<15} {'Bucket':<15}")
-    typer.echo("-" * 52)
-    for app in apps:
-        typer.echo(f"{app.name:<20} {app.version:<15} {app.bucket:<15}")
+    typer.echo(f"{'Name':<20} {'Version':<15} {'Install Dir'}")
+    typer.echo("-" * 70)
+    for installed_app in result.apps:
+        typer.echo(f"{installed_app.name:<20} {installed_app.version:<15} {installed_app.install_dir}")
 
 
 def main() -> int:

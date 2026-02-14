@@ -14,6 +14,7 @@ import pytest
 
 from poks.domain import PoksConfig, PoksManifest
 from tests.conftest import PoksEnv
+from tests.helpers import assert_install_result, assert_installed_app
 
 
 @pytest.mark.slow
@@ -73,28 +74,17 @@ def test_zephyr_lifecycle(poks_env: PoksEnv, capsys: pytest.CaptureFixture[str])
     assert mtime_before == mtime_after, "Installation should have been skipped (dir modified)"
 
     # 4. List command
-    # Check that it finds the app with the proper information
-    apps = poks_env.poks.list_installed()
-    assert len(apps) == 1
-    found_app = apps[0]
-    assert found_app.name == app_name
+    list_result = poks_env.poks.list_installed()
+    found_app = assert_installed_app(list_result, app_name)
     assert found_app.version == version
-    # Since we installed from a config defining "test" bucket (via create_config),
-    # but poks.list_installed() might not resolve the bucket name if not persisted,
-    # let's check what we expect.
-    # poks.list_installed() implementation tries to resolve bucket but defaults to "unknown" if not tracked perfectly
-    # or "test" if we updated it.
-    # In test_list.py it was "unknown". Let's see if our install persists enough info.
-    # The current implementation of list() initializes bucket="unknown".
-    assert found_app.name == app_name
+    assert found_app.install_dir == install_dir
 
     # 5. Uninstall
     poks_env.poks.uninstall(app_name=app_name)
 
     # Check there are no apps when listed
     assert not install_dir.exists(), "App directory should be removed after uninstall"
-    apps_after_uninstall = poks_env.poks.list_installed()
-    assert len(apps_after_uninstall) == 0, "List should be empty after uninstall"
+    assert_install_result(poks_env.poks.list_installed(), 0)
 
     # 6. Reinstall (using cache)
     # Install it again and it shall use the cache
@@ -120,6 +110,4 @@ def test_zephyr_lifecycle(poks_env: PoksEnv, capsys: pytest.CaptureFixture[str])
     print(f"Reinstall duration: {duration:.2f}s")
 
     # List it and shall be there
-    apps_reinstalled = poks_env.poks.list_installed()
-    assert len(apps_reinstalled) == 1
-    assert apps_reinstalled[0].name == app_name
+    assert_installed_app(poks_env.poks.list_installed(), app_name)

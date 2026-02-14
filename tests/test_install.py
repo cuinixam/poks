@@ -10,7 +10,7 @@ import pytest
 
 from poks.domain import PoksApp, PoksAppVersion, PoksArchive, PoksBucket, PoksConfig, PoksManifest
 from poks.poks import Poks
-from tests.helpers import create_archive
+from tests.helpers import assert_install_result, assert_installed_app, create_archive
 
 
 def _setup_bucket(
@@ -87,14 +87,15 @@ def test_full_install_end_to_end(
             "poks.poks.sync_all_buckets",
             lambda _buckets, _dir: {"test": bucket_dir},
         )
-        env = poks.install(config)
+        result = poks.install(config)
 
     install_dir = root_dir / "apps" / "my-tool" / "1.0.0"
     assert install_dir.exists()
     assert (install_dir / "bin" / "tool").read_text() == "#!/bin/sh\necho hello"
-    assert "PATH" in env
-    assert str(install_dir / "bin") in env["PATH"]
-    assert env["TOOL_HOME"] == str(install_dir)
+    app = assert_installed_app(result, "my-tool")
+    assert app.install_dir == install_dir
+    assert install_dir / "bin" in app.bin_dirs
+    assert app.env["TOOL_HOME"] == str(install_dir)
 
 
 def test_install_accepts_path(
@@ -146,10 +147,10 @@ def test_platform_filtered_apps_skipped(
             "poks.poks.sync_all_buckets",
             lambda _buckets, _dir: {"test": bucket_dir},
         )
-        env = poks.install(config)
+        result = poks.install(config)
 
     assert not (root_dir / "apps" / "win-only" / "1.0.0").exists()
-    assert env == {}
+    assert_install_result(result, 0)
 
 
 def test_idempotency_skips_installed(
@@ -175,10 +176,11 @@ def test_idempotency_skips_installed(
             "poks.poks.sync_all_buckets",
             lambda _buckets, _dir: {"test": bucket_dir},
         )
-        env = poks.install(config)
+        result = poks.install(config)
 
     assert (install_dir / "marker.txt").read_text() == "pre-existing"
-    assert "PATH" in env
+    app = assert_installed_app(result, "my-tool")
+    assert app.bin_dirs == [install_dir / "bin"]
 
 
 def test_multiple_apps_env_merged(
@@ -220,13 +222,13 @@ def test_multiple_apps_env_merged(
             "poks.poks.sync_all_buckets",
             lambda _buckets, _dir: {"test": bucket_dir},
         )
-        env = poks.install(config)
+        result = poks.install(config)
 
-    assert "PATH" in env
-    path_a = str(root_dir / "apps" / "tool-a" / "1.0.0" / "bin")
-    path_b = str(root_dir / "apps" / "tool-b" / "2.0.0" / "tools")
-    assert path_a in env["PATH"]
-    assert path_b in env["PATH"]
+    assert_install_result(result, 2)
+    app_a = assert_installed_app(result, "tool-a")
+    app_b = assert_installed_app(result, "tool-b")
+    assert app_a.bin_dirs == [root_dir / "apps" / "tool-a" / "1.0.0" / "bin"]
+    assert app_b.bin_dirs == [root_dir / "apps" / "tool-b" / "2.0.0" / "tools"]
 
 
 def test_missing_config_file_raises(install_env: tuple[Poks, Path, Path]) -> None:
@@ -260,9 +262,10 @@ def test_install_app_explicit_bucket(
             "poks.poks.sync_all_buckets",
             lambda _buckets, _dir: {"my-bucket": bucket_dir},
         )
-        poks.install_app("app-a@1.0.0", bucket="my-bucket")
+        installed = poks.install_app("app-a@1.0.0", bucket="my-bucket")
 
-    assert (root_dir / "apps" / "app-a" / "1.0.0").exists()
+    assert installed.name == "app-a"
+    assert installed.install_dir == root_dir / "apps" / "app-a" / "1.0.0"
 
 
 def test_install_app_auto_bucket(
@@ -284,9 +287,10 @@ def test_install_app_auto_bucket(
             "poks.poks.sync_all_buckets",
             lambda _buckets, _dir: {"auto-bucket": bucket_dir},
         )
-        poks.install_app("app-b@1.0.0")
+        installed = poks.install_app("app-b@1.0.0")
 
-    assert (root_dir / "apps" / "app-b" / "1.0.0").exists()
+    assert installed.name == "app-b"
+    assert installed.install_dir == root_dir / "apps" / "app-b" / "1.0.0"
 
 
 def test_yanked_version_raises(

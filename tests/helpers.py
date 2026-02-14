@@ -5,10 +5,32 @@ from __future__ import annotations
 import hashlib
 import tarfile
 import zipfile
+from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 
 from git import Repo
+
+from poks.domain import InstalledApp, InstallResult
+
+
+def assert_install_result(result: InstallResult, expected_count: int) -> list[InstalledApp]:
+    """Assert the expected number of installed apps and return them."""
+    assert len(result.apps) == expected_count, f"Expected {expected_count} installed apps, found {len(result.apps)}"
+    return result.apps
+
+
+def assert_installed_app(
+    result: InstallResult,
+    name: str,
+    filter_fn: Callable[[InstalledApp], bool] | None = None,
+) -> InstalledApp:
+    """Assert exactly one installed app matches the name (and optional filter) and return it."""
+    matches = [app for app in result.apps if app.name == name]
+    if filter_fn:
+        matches = [app for app in matches if filter_fn(app)]
+    assert len(matches) == 1, f"Expected 1 app named '{name}', found {len(matches)}"
+    return matches[0]
 
 
 def create_archive(
