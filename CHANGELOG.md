@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.0 (2026-02-15)
+
+### Documentation
+
+- Cleanup and add examples ([`8b51e42`](https://github.com/cuinixam/poks/commit/8b51e42f9549589b436299c7a5f6fdae769b4ec6))
+
+### Features
+
+- Add from manifest option ([`11192fb`](https://github.com/cuinixam/poks/commit/11192fb60ef486bb82d16bccfad2ab751e952115))
+
 ## v0.4.0 (2026-02-15)
 
 ### Features
