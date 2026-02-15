@@ -95,6 +95,22 @@ Install directly from a local manifest file — no bucket needed. Useful for tes
 poks install --manifest cmake.json --version 4.2.3
 ```
 
+### Platform filtering
+
+Apps in a config file can be restricted to specific operating systems or architectures using the `os` and `arch` fields. Apps that don't match the current platform are silently skipped.
+
+```json
+{
+    "apps": [
+        { "name": "cmake", "version": "3.28.1", "bucket": "main" },
+        { "name": "mingw-tools", "version": "1.0.0", "bucket": "extras", "os": ["windows"] },
+        { "name": "build-essential", "version": "1.0.0", "bucket": "extras", "os": ["linux", "macos"] }
+    ]
+}
+```
+
+Supported values — `os`: `windows`, `linux`, `macos`; `arch`: `x86_64`, `aarch64`. When omitted, the app is installed on all platforms.
+
 ### Other commands
 
 ```bash
