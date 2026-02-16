@@ -105,6 +105,37 @@ def test_extract_archive(tmp_path, label, creator):
     assert (dest / "hello.txt").read_text() == HELLO_CONTENT
 
 
+EXTRACT_DIR_CREATORS = [
+    ("zip", lambda p, td: _create_zip(p, top_dir=td)),
+    ("tar.gz", lambda p, td: _create_tar(p, "gz", ".tar.gz", top_dir=td)),
+    ("7z", lambda p, td: _create_7z(p, top_dir=td)),
+]
+
+
+@pytest.mark.parametrize(("label", "creator"), EXTRACT_DIR_CREATORS, ids=[a[0] for a in EXTRACT_DIR_CREATORS])
+def test_extract_dir_relocates_contents(tmp_path, label, creator):
+    archive = creator(tmp_path, "nested-dir")
+    dest = tmp_path / "out"
+    result = extract_archive(archive, dest, extract_dir="nested-dir")
+    assert result == dest
+    assert (dest / "hello.txt").read_text() == HELLO_CONTENT
+    assert not (dest / "nested-dir").exists()
+
+
+def test_extract_dir_missing_raises(tmp_path):
+    archive = _create_zip(tmp_path)
+    dest = tmp_path / "out"
+    with pytest.raises(ValueError, match="not found in extracted archive"):
+        extract_archive(archive, dest, extract_dir="nonexistent")
+
+
+def test_extract_dir_traversal_rejected(tmp_path):
+    archive = _create_zip(tmp_path)
+    dest = tmp_path / "out"
+    with pytest.raises(ValueError, match="escapes destination directory"):
+        extract_archive(archive, dest, extract_dir="../escape")
+
+
 def test_unsupported_format_raises(tmp_path):
     fake = tmp_path / "archive.rar"
     fake.write_text("not real")

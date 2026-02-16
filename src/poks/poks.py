@@ -115,6 +115,7 @@ class Poks:
         install_dir = self.apps_dir / app_name / version
         if not install_dir.exists():
             archive = resolve_archive(app_version, current_os, current_arch)
+            effective = app_version.resolve_for_archive(archive)
             url = resolve_download_url(app_version, archive)
             archive_path = get_cached_or_download(
                 url,
@@ -124,17 +125,17 @@ class Poks:
                 progress_callback=self.progress_callback,
                 use_cache=self.use_cache,
             )
-            extract_archive(archive_path, install_dir)
+            extract_archive(archive_path, install_dir, extract_dir=effective.extract_dir)
             (install_dir / ".manifest.json").write_text(manifest.to_json_string())
             self._create_receipt(install_dir, "", [])
             if not self.progress_callback:
                 logger.info(f"Installed {app_name}@{version}")
         else:
             archive = resolve_archive(app_version, current_os, current_arch)
+            effective = app_version.resolve_for_archive(archive)
             if not self.progress_callback:
                 logger.info(f"Skipping {app_name}@{version}: already installed")
 
-        effective = app_version.resolve_for_archive(archive)
         return self._build_installed_app(app_name, version, install_dir, effective)
 
     def _resolve_bucket(self, bucket_arg: str | None, app_name: str, registry: PoksBucketRegistry) -> PoksBucket:
@@ -283,6 +284,7 @@ class Poks:
         install_dir = self.apps_dir / app.name / app.version
         if not install_dir.exists():
             archive = resolve_archive(app_version, current_os, current_arch)
+            effective = app_version.resolve_for_archive(archive)
             url = resolve_download_url(app_version, archive)
             archive_path = get_cached_or_download(
                 url,
@@ -292,7 +294,7 @@ class Poks:
                 progress_callback=self.progress_callback,
                 use_cache=self.use_cache,
             )
-            extract_archive(archive_path, install_dir)
+            extract_archive(archive_path, install_dir, extract_dir=effective.extract_dir)
 
             # Persist manifest and receipt for future reference
             (install_dir / ".manifest.json").write_text(manifest.to_json_string())
@@ -301,10 +303,10 @@ class Poks:
                 logger.info(f"Installed {app.name}@{app.version}")
         else:
             archive = resolve_archive(app_version, current_os, current_arch)
+            effective = app_version.resolve_for_archive(archive)
             if not self.progress_callback:
                 logger.info(f"Skipping {app.name}@{app.version}: already installed")
 
-        effective = app_version.resolve_for_archive(archive)
         return self._build_installed_app(app.name, app.version, install_dir, effective)
 
     def _create_receipt(self, install_dir: Path, bucket_ref: str, buckets_list: list[PoksBucket]) -> None:
@@ -374,7 +376,7 @@ class Poks:
 
     @staticmethod
     def _build_installed_app(name: str, version: str, install_dir: Path, app_version: PoksAppVersion) -> InstalledApp:
-        bin_dirs = [install_dir / entry for entry in app_version.bin] if app_version.bin else []
+        bin_dirs = [install_dir / entry for entry in app_version.bin_dirs] if app_version.bin_dirs else []
         env: dict[str, str] = {}
         if app_version.env:
             dir_str = str(install_dir)

@@ -113,7 +113,8 @@ The `archives` field is a list where each element defines:
 - `ext`: The file extension (e.g., `.7z`, `.tar.gz`). Used for generic URL expansion. If omitted when `url` is specified, Poks auto-detects the format from the URL.
 - `url`: (Optional within archive) The direct download URL. Overrides the generic URL.
 - `sha256`: The SHA256 hash for verification.
-- `bin`: (Optional) Overrides the version-level `bin` directories for this archive.
+- `extract_dir`: (Optional) Overrides the version-level `extract_dir` for this archive.
+- `bin_dirs`: (Optional) Overrides the version-level `bin_dirs` directories for this archive.
 - `env`: (Optional) Overrides the version-level `env` variables for this archive.
 
 **Supported Platforms**:
@@ -257,14 +258,16 @@ class PoksArchive:
     sha256: str
     ext: Optional[str] = None  # Auto-detected from url if omitted
     url: Optional[str] = None
-    bin: list[str] | None = None  # Overrides version-level bin
-    env: dict[str, str] | None = None  # Merges with version-level env
+    extract_dir: str | None = None  # Overrides version-level extract_dir
+    bin_dirs: list[str] | None = None  # Overrides version-level bin_dirs
+    env: dict[str, str] | None = None  # Overrides version-level env
 
 @dataclass
 class PoksAppVersion:
     version: str
     archives: list[PoksArchive]
-    bin: list[str] | None = None
+    extract_dir: str | None = None
+    bin_dirs: list[str] | None = None
     env: dict[str, str] | None = None
     license: str | None = None
     yanked: str | None = None  # Reason string if yanked

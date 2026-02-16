@@ -140,3 +140,6 @@ dmypy.json
 cython_debug/
 
 .bootstrap/
+
+# Agents local settings
+*.local.json

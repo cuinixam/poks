@@ -29,7 +29,7 @@ def test_collect_env_updates(
     expected_keys: set[str],
 ) -> None:
     install_dir = Path("/apps/tool/1.0")
-    version = PoksAppVersion(version="1.0", archives=DUMMY_ARCHIVE, bin=bin_dirs, env=env_vars)
+    version = PoksAppVersion(version="1.0", archives=DUMMY_ARCHIVE, bin_dirs=bin_dirs, env=env_vars)
 
     result = collect_env_updates(version, install_dir)
 

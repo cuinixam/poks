@@ -14,12 +14,12 @@ def collect_env_updates(version: PoksAppVersion, install_dir: Path) -> dict[str,
     """
     Build a dictionary of environment variable updates from a version spec.
 
-    Resolves ``bin`` paths relative to *install_dir* into a ``PATH`` entry and
-    expands ``${dir}`` in ``env`` values.
+    Resolves ``bin_dirs`` paths relative to *install_dir* into a ``PATH`` entry
+    and expands ``${dir}`` in ``env`` values.
     """
     result: dict[str, str] = {}
-    if version.bin:
-        paths = [str(install_dir / entry) for entry in version.bin]
+    if version.bin_dirs:
+        paths = [str(install_dir / entry) for entry in version.bin_dirs]
         result["PATH"] = os.pathsep.join(paths)
     if version.env:
         dir_str = str(install_dir)

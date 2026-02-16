@@ -53,7 +53,8 @@ class PoksArchive(PoksJsonMixin):
     sha256: str
     ext: str | None = None
     url: str | None = None
-    bin: list[str] | None = None
+    extract_dir: str | None = None
+    bin_dirs: list[str] | None = None
     env: dict[str, str] | None = None
 
 
@@ -63,18 +64,20 @@ class PoksAppVersion(PoksJsonMixin):
 
     version: str
     archives: list[PoksArchive]
-    bin: list[str] | None = None
+    extract_dir: str | None = None
+    bin_dirs: list[str] | None = None
     env: dict[str, str] | None = None
     license: str | None = None
     yanked: str | None = None
     url: str | None = None
 
     def resolve_for_archive(self, archive: PoksArchive) -> PoksAppVersion:
-        """Return a copy with archive-level bin/env overrides applied."""
+        """Return a copy with archive-level overrides applied."""
         return PoksAppVersion(
             version=self.version,
             archives=self.archives,
-            bin=archive.bin if archive.bin is not None else self.bin,
+            extract_dir=archive.extract_dir if archive.extract_dir is not None else self.extract_dir,
+            bin_dirs=archive.bin_dirs if archive.bin_dirs is not None else self.bin_dirs,
             env=archive.env if archive.env is not None else self.env,
             license=self.license,
             yanked=self.yanked,

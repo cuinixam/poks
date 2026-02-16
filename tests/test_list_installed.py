@@ -21,7 +21,7 @@ def test_list_api_returns_installed_apps(poks_env: PoksEnv, tmp_path: Path) -> N
     install_dir = poks_env.apps_dir / app_name / version
     install_dir.mkdir(parents=True)
 
-    manifest = PoksManifest(description="Test App", versions=[PoksAppVersion(version=version, archives=[], bin=["bin"], env={"MY_VAR": "${dir}/data"})])
+    manifest = PoksManifest(description="Test App", versions=[PoksAppVersion(version=version, archives=[], bin_dirs=["bin"], env={"MY_VAR": "${dir}/data"})])
     (install_dir / ".manifest.json").write_text(manifest.to_json_string())
 
     (install_dir / "bin").mkdir()

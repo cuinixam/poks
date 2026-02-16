@@ -16,7 +16,7 @@ SAMPLE_MANIFEST = {
                 {"os": "windows", "arch": "x86_64", "ext": ".7z", "sha256": "abc123"},
                 {"os": "linux", "arch": "x86_64", "sha256": "def456", "url": "https://mirror.example.com/sdk-linux.tar.xz"},
             ],
-            "bin": ["bin"],
+            "bin_dirs": ["bin"],
             "env": {"ZEPHYR_SDK_INSTALL_DIR": "${dir}"},
         }
     ],
@@ -59,7 +59,7 @@ class TestPoksManifest:
         assert len(version.archives) == 2
         assert version.archives[0].os == "windows"
         assert version.archives[1].url == "https://mirror.example.com/sdk-linux.tar.xz"
-        assert version.bin == ["bin"]
+        assert version.bin_dirs == ["bin"]
         assert version.env == {"ZEPHYR_SDK_INSTALL_DIR": "${dir}"}
 
     def test_from_json_file_minimal(self, tmp_path):
@@ -71,7 +71,7 @@ class TestPoksManifest:
         assert len(manifest.versions) == 1
         assert manifest.versions[0].version == "1.0.0"
         assert manifest.versions[0].url is None
-        assert manifest.versions[0].bin is None
+        assert manifest.versions[0].bin_dirs is None
         assert manifest.versions[0].env is None
 
     def test_round_trip(self, tmp_path):
@@ -96,8 +96,8 @@ class TestPoksManifest:
 
         # description is required now
         assert "homepage" not in raw
-        # bin is in versions
-        assert "bin" not in raw["versions"][0]
+        # bin_dirs is in versions
+        assert "bin_dirs" not in raw["versions"][0]
 
 
 class TestPoksConfig:
@@ -150,14 +150,14 @@ def test_invalid_json(tmp_path):
 
 
 class TestResolveForArchive:
-    def test_archive_overrides_bin(self):
+    def test_archive_overrides_bin_dirs(self):
         version = PoksAppVersion(
             version="1.0",
-            archives=[PoksArchive(os="linux", arch="x86_64", sha256="aaa", bin=["custom/bin"])],
-            bin=["default/bin"],
+            archives=[PoksArchive(os="linux", arch="x86_64", sha256="aaa", bin_dirs=["custom/bin"])],
+            bin_dirs=["default/bin"],
         )
         effective = version.resolve_for_archive(version.archives[0])
-        assert effective.bin == ["custom/bin"]
+        assert effective.bin_dirs == ["custom/bin"]
 
     def test_env_archive_overrides_version(self):
         version = PoksAppVersion(
@@ -172,9 +172,27 @@ class TestResolveForArchive:
         version = PoksAppVersion(
             version="1.0",
             archives=[PoksArchive(os="linux", arch="x86_64", sha256="aaa")],
-            bin=["bin"],
+            bin_dirs=["bin"],
             env={"HOME": "${dir}"},
         )
         effective = version.resolve_for_archive(version.archives[0])
-        assert effective.bin == ["bin"]
+        assert effective.bin_dirs == ["bin"]
         assert effective.env == {"HOME": "${dir}"}
+
+    def test_archive_overrides_extract_dir(self):
+        version = PoksAppVersion(
+            version="1.0",
+            archives=[PoksArchive(os="linux", arch="x86_64", sha256="aaa", extract_dir="arch-specific")],
+            extract_dir="default-dir",
+        )
+        effective = version.resolve_for_archive(version.archives[0])
+        assert effective.extract_dir == "arch-specific"
+
+    def test_no_override_inherits_extract_dir(self):
+        version = PoksAppVersion(
+            version="1.0",
+            archives=[PoksArchive(os="linux", arch="x86_64", sha256="aaa")],
+            extract_dir="top-level-dir",
+        )
+        effective = version.resolve_for_archive(version.archives[0])
+        assert effective.extract_dir == "top-level-dir"
