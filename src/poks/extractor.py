@@ -14,6 +14,7 @@ from typing import Any, Literal, cast
 
 import py7zr
 import zstandard
+from py_app_dev.core.exceptions import UserNotificationException
 
 from poks.poker import PatchEntry, poke
 
@@ -154,11 +155,14 @@ def extract_archive(archive_path: Path, dest_dir: Path, extract_dir: str | None 
     """Extract an archive into *dest_dir* and return *dest_dir*."""
     fmt = _detect_format(archive_path)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    if fmt == "conda":
-        _extract_conda(archive_path, dest_dir)
-    else:
-        with _open_archive(archive_path, fmt) as archive:
-            _extract_all(archive, fmt, dest_dir)
+    try:
+        if fmt == "conda":
+            _extract_conda(archive_path, dest_dir)
+        else:
+            with _open_archive(archive_path, fmt) as archive:
+                _extract_all(archive, fmt, dest_dir)
+    except py7zr.exceptions.UnsupportedCompressionMethodError as exc:
+        raise UserNotificationException(f"Cannot extract '{archive_path.name}': {exc}. Try installing 7-Zip and extracting manually.") from exc
     if extract_dir:
         _relocate_extract_dir(dest_dir, extract_dir)
     return dest_dir

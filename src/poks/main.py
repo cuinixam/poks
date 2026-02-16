@@ -13,6 +13,7 @@ from rich.progress import BarColumn, DownloadColumn, Progress, TaskID, TimeRemai
 from poks import __version__
 from poks.downloader import ProgressCallback
 from poks.poks import Poks
+from poks.scoop import convert_scoop_manifest
 
 package_name = "poks"
 DEFAULT_ROOT_DIR = Path.home() / ".poks"
@@ -181,6 +182,29 @@ def list_apps(
     typer.echo("-" * 70)
     for installed_app in result.apps:
         typer.echo(f"{installed_app.name:<20} {installed_app.version:<15} {installed_app.install_dir}")
+
+
+@app.command(name="convert-scoop", help="Convert a Scoop manifest to a Poks manifest.")
+def convert_scoop(
+    scoop_manifest: Annotated[Path, typer.Argument(help="Path to a Scoop manifest.json file.")],
+    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output file path.")] = None,
+) -> None:
+    if not scoop_manifest.exists():
+        logger.error(f"File not found: {scoop_manifest}")
+        raise typer.Exit(1)
+
+    manifest = convert_scoop_manifest(scoop_manifest)
+
+    if output is None:
+        # Derive app name from scoop directory structure: apps/<name>/<version>/manifest.json
+        parent_parts = scoop_manifest.resolve().parts
+        app_name = scoop_manifest.stem
+        if len(parent_parts) >= 3 and parent_parts[-1].lower() == "manifest.json":
+            app_name = parent_parts[-3]
+        output = Path.cwd() / f"{app_name}.json"
+
+    manifest.to_json_file(output)
+    typer.echo(f"Poks manifest written to: {output}")
 
 
 def main() -> int:
