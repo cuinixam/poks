@@ -49,7 +49,10 @@ def _pull_repo(repo_path: Path) -> None:
     """Fetch and reset a local git repository to match its remote tracking branch."""
     repo = Repo(repo_path)
     repo.remotes.origin.fetch()
-    repo.head.reset(repo.active_branch.tracking_branch(), index=True, working_tree=True)
+    tracking = repo.active_branch.tracking_branch()
+    if tracking is None:
+        raise RuntimeError(f"Branch '{repo.active_branch.name}' has no upstream tracking branch")
+    repo.head.reset(tracking, index=True, working_tree=True)
 
 
 def sync_bucket(bucket: PoksBucket, buckets_dir: Path) -> Path:

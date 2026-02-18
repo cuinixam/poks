@@ -10,6 +10,11 @@
       "name": "riscv64-zephyr-elf",
       "version": "0.17.4",
       "bucket": "poks-bucket"
+    },
+    {
+      "name": "cmake",
+      "version": "4.2.3",
+      "bucket": "poks-bucket"
     }
   ]
 }

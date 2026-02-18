@@ -5,9 +5,9 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from pathlib import Path
-from urllib.error import URLError
-from urllib.request import urlopen
+from urllib.request import url2pathname
 
+import requests
 from py_app_dev.core.logging import logger
 
 _HASH_CHUNK_SIZE = 8192
@@ -48,21 +48,45 @@ def download_file(
 
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with urlopen(url, timeout=_DOWNLOAD_TIMEOUT) as response, dest.open("wb") as fh:  # noqa: S310
-            content_length = response.headers.get("Content-Length")
-            total = int(content_length) if content_length else None
-            downloaded = 0
-            while chunk := response.read(_HASH_CHUNK_SIZE):
-                fh.write(chunk)
+    if url.startswith("file://"):
+        src = Path(url2pathname(url[7:]))
+        file_size = src.stat().st_size
+        downloaded = 0
+        with src.open("rb") as src_fh, dest.open("wb") as dst_fh:
+            while chunk := src_fh.read(_HASH_CHUNK_SIZE):
+                dst_fh.write(chunk)
                 downloaded += len(chunk)
                 if progress_callback:
-                    progress_callback(app_name, downloaded, total)
-    except (URLError, OSError) as exc:
-        raise DownloadError(f"Failed to download {url}: {exc}") from exc
+                    progress_callback(app_name, downloaded, file_size)
+        if not progress_callback:
+            logger.info(f"Copied {url} -> {dest}")
+        return dest
+    _download_via_http(url, dest, app_name, progress_callback)
     if not progress_callback:
         logger.info(f"Downloaded {url} -> {dest}")
     return dest
+
+
+def _download_via_http(
+    url: str,
+    dest: Path,
+    app_name: str,
+    progress_callback: ProgressCallback | None,
+) -> None:
+    try:
+        with requests.get(url, stream=True, timeout=_DOWNLOAD_TIMEOUT) as response:
+            response.raise_for_status()
+            content_length = response.headers.get("Content-Length")
+            total: int | None = int(content_length) if content_length else None
+            downloaded = 0
+            with dest.open("wb") as fh:
+                for chunk in response.iter_content(chunk_size=_HASH_CHUNK_SIZE):
+                    fh.write(chunk)
+                    downloaded += len(chunk)
+                    if progress_callback:
+                        progress_callback(app_name, downloaded, total)
+    except requests.RequestException as exc:
+        raise DownloadError(f"Failed to download {url}: {exc}") from exc
 
 
 def verify_sha256(file_path: Path, expected_hash: str) -> None:

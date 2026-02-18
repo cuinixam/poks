@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import hashlib
-from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from urllib.error import URLError
 
 import pytest
+import requests
 
 from poks.downloader import (
     DownloadError,
@@ -23,15 +22,15 @@ SAMPLE_CONTENT = b"hello poks"
 SAMPLE_SHA256 = hashlib.sha256(SAMPLE_CONTENT).hexdigest()
 
 
-def _mock_urlopen(content_length: str | None = None) -> MagicMock:
-    """Create a mock urlopen that returns SAMPLE_CONTENT."""
+def _mock_requests_get(content_length: str | None = None) -> MagicMock:
+    """Create a mock requests.get that streams SAMPLE_CONTENT."""
     mock_response = MagicMock()
-    mock_response.read = BytesIO(SAMPLE_CONTENT).read
     mock_response.headers = {"Content-Length": content_length} if content_length else {}
+    mock_response.iter_content = lambda chunk_size: iter([SAMPLE_CONTENT])
+    mock_response.raise_for_status = MagicMock()
     mock_response.__enter__ = lambda s: s
     mock_response.__exit__ = MagicMock(return_value=False)
-    mock_open = MagicMock(return_value=mock_response)
-    return mock_open
+    return MagicMock(return_value=mock_response)
 
 
 # -- download_file -----------------------------------------------------------
@@ -40,7 +39,7 @@ def _mock_urlopen(content_length: str | None = None) -> MagicMock:
 def test_download_file_success(tmp_path: Path) -> None:
     dest = tmp_path / "sub" / "archive.tar.gz"
 
-    with patch("poks.downloader.urlopen", _mock_urlopen()):
+    with patch("poks.downloader.requests.get", _mock_requests_get()):
         result = download_file("https://example.com/archive.tar.gz", dest)
 
     assert result == dest
@@ -51,7 +50,7 @@ def test_download_file_network_error(tmp_path: Path) -> None:
     dest = tmp_path / "archive.tar.gz"
 
     with (
-        patch("poks.downloader.urlopen", side_effect=URLError("connection refused")),
+        patch("poks.downloader.requests.get", side_effect=requests.RequestException("connection refused")),
         pytest.raises(DownloadError, match="connection refused"),
     ):
         download_file("https://example.com/archive.tar.gz", dest)
@@ -85,7 +84,7 @@ def test_cached_file_reused(tmp_path: Path) -> None:
     cached_file = _cache_path_for(url, cache_dir)
     cached_file.write_bytes(SAMPLE_CONTENT)
 
-    with patch("poks.downloader.urlopen") as mock_dl:
+    with patch("poks.downloader.requests.get") as mock_dl:
         result = get_cached_or_download(url, SAMPLE_SHA256, cache_dir)
 
     assert result == cached_file
@@ -99,7 +98,7 @@ def test_corrupt_cache_redownloaded(tmp_path: Path) -> None:
     cached_file = _cache_path_for(url, cache_dir)
     cached_file.write_bytes(b"corrupt data")
 
-    with patch("poks.downloader.urlopen", _mock_urlopen()):
+    with patch("poks.downloader.requests.get", _mock_requests_get()):
         result = get_cached_or_download(url, SAMPLE_SHA256, cache_dir)
 
     assert result == cached_file
@@ -110,7 +109,7 @@ def test_missing_cache_downloads(tmp_path: Path) -> None:
     url = "https://example.com/archive.tar.gz"
     cache_dir = tmp_path / "cache"
 
-    with patch("poks.downloader.urlopen", _mock_urlopen()):
+    with patch("poks.downloader.requests.get", _mock_requests_get()):
         result = get_cached_or_download(url, SAMPLE_SHA256, cache_dir)
 
     assert result == _cache_path_for(url, cache_dir)
@@ -138,7 +137,7 @@ def test_progress_callback_invoked_with_total(tmp_path: Path) -> None:
     dest = tmp_path / "archive.tar.gz"
     calls: list[tuple[str, int, int | None]] = []
 
-    with patch("poks.downloader.urlopen", _mock_urlopen(content_length=str(len(SAMPLE_CONTENT)))):
+    with patch("poks.downloader.requests.get", _mock_requests_get(content_length=str(len(SAMPLE_CONTENT)))):
         download_file(
             "https://example.com/archive.tar.gz",
             dest,
@@ -157,7 +156,7 @@ def test_progress_callback_without_content_length(tmp_path: Path) -> None:
     dest = tmp_path / "archive.tar.gz"
     calls: list[tuple[str, int, int | None]] = []
 
-    with patch("poks.downloader.urlopen", _mock_urlopen()):
+    with patch("poks.downloader.requests.get", _mock_requests_get()):
         download_file(
             "https://example.com/archive.tar.gz",
             dest,

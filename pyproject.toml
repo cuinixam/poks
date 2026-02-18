@@ -28,6 +28,7 @@ dependencies = [
   "py7zr>=0,<1",
   "gitpython>=3,<4",
   "zstandard>=0.20,<1",
+  "requests>=2.32,<3",
 ]
 urls."Bug Tracker" = "https://github.com/cuinixam/poks/issues"
 urls.Changelog = "https://github.com/cuinixam/poks/blob/main/CHANGELOG.md"
@@ -49,6 +50,7 @@ dev = [
   "pypeline-runner>=1,<2",
   "pre-commit>=4,<5",
   "ruff>=0,<1",
+  "types-requests>=2.32,<3",
 ]
 
 [tool.ruff]
