@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.1 (2026-02-22)
+
+### Bug fixes
+
+- App name is not printed when installation fails ([`110998d`](https://github.com/cuinixam/poks/commit/110998dd5394cfbe799a12280927c986b140f6d9))
+
 ## v0.9.0 (2026-02-22)
 
 ### Features
