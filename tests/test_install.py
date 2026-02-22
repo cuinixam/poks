@@ -10,6 +10,7 @@ import pytest
 
 from poks.domain import PoksApp, PoksAppVersion, PoksArchive, PoksBucket, PoksConfig, PoksManifest
 from poks.poks import Poks
+from poks.progress import default_progress
 from tests.helpers import assert_install_result, assert_installed_app, create_archive
 
 
@@ -451,3 +452,34 @@ def test_per_archive_bin_overrides_version(
     # archive env fully replaces version env (consistent with bin_dirs override)
     assert installed.env == {"EXTRA": "val"}
     assert "TOOL_HOME" not in installed.env
+
+
+def test_default_progress_is_set(tmp_path: Path) -> None:
+    poks = Poks(root_dir=tmp_path)
+    assert poks.progress_callback is default_progress
+
+
+def test_explicit_none_disables_progress(tmp_path: Path) -> None:
+    poks = Poks(root_dir=tmp_path, progress_callback=None)
+    assert poks.progress_callback is None
+
+
+def test_default_progress_invoked_during_install(
+    install_env: tuple[Poks, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    poks, _, archives_dir = install_env
+    calls: list[tuple[str, int, int | None]] = []
+    # Default callback should already be set; replace it with a spy to verify invocations
+    assert poks.progress_callback is default_progress
+    poks.progress_callback = lambda name, downloaded, total: calls.append((name, downloaded, total))
+
+    manifest = _make_manifest(archives_dir)
+    manifest_path = archives_dir / "spy-tool.json"
+    manifest_path.write_text(manifest.to_json_string())
+
+    with PLATFORM_PATCH:
+        poks.install_from_manifest(manifest_path, "1.0.0")
+
+    assert len(calls) > 0
+    assert all(name == "spy-tool" for name, _, _ in calls)

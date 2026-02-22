@@ -19,9 +19,10 @@ from poks.bucket import (
     update_local_buckets,
 )
 from poks.domain import InstalledApp, InstallResult, PoksApp, PoksAppVersion, PoksBucket, PoksBucketRegistry, PoksConfig, PoksManifest
-from poks.downloader import ProgressCallback, get_cached_or_download
+from poks.downloader import get_cached_or_download
 from poks.extractor import extract_archive
 from poks.platform import get_current_platform
+from poks.progress import ProgressCallback, default_progress
 from poks.resolver import resolve_archive, resolve_download_url
 
 
@@ -31,7 +32,7 @@ class Poks:
     def __init__(
         self,
         root_dir: Path,
-        progress_callback: ProgressCallback | None = None,
+        progress_callback: ProgressCallback | None = default_progress,
         use_cache: bool = True,
     ) -> None:
         """
@@ -39,8 +40,10 @@ class Poks:
 
         Args:
             root_dir: Root directory for Poks (apps, buckets, cache).
-            progress_callback: Optional callback invoked during downloads
+            progress_callback: Callback invoked during downloads
                 with ``(app_name, bytes_downloaded, total_bytes_or_none)``.
+                Defaults to a text-based progress reporter.
+                Pass ``None`` explicitly to disable progress output.
             use_cache: If False, skip the download cache and always re-download.
 
         """
@@ -128,13 +131,9 @@ class Poks:
             extract_archive(archive_path, install_dir, extract_dir=effective.extract_dir)
             (install_dir / ".manifest.json").write_text(manifest.to_json_string())
             self._create_receipt(install_dir, "", [])
-            if not self.progress_callback:
-                logger.info(f"Installed {app_name}@{version}")
         else:
             archive = resolve_archive(app_version, current_os, current_arch)
             effective = app_version.resolve_for_archive(archive)
-            if not self.progress_callback:
-                logger.info(f"Skipping {app_name}@{version}: already installed")
 
         return self._build_installed_app(app_name, version, install_dir, effective)
 
@@ -299,13 +298,9 @@ class Poks:
             # Persist manifest and receipt for future reference
             (install_dir / ".manifest.json").write_text(manifest.to_json_string())
             self._create_receipt(install_dir, app.bucket, buckets_list)
-            if not self.progress_callback:
-                logger.info(f"Installed {app.name}@{app.version}")
         else:
             archive = resolve_archive(app_version, current_os, current_arch)
             effective = app_version.resolve_for_archive(archive)
-            if not self.progress_callback:
-                logger.info(f"Skipping {app.name}@{app.version}: already installed")
 
         return self._build_installed_app(app.name, app.version, install_dir, effective)
 

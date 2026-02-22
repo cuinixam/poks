@@ -1,39 +1,19 @@
 """CLI entry point for Poks package manager."""
 
 import sys
-import threading
 from pathlib import Path
 from typing import Annotated
 
 import typer
 from py_app_dev.core.exceptions import UserNotificationException
 from py_app_dev.core.logging import logger, setup_logger, time_it
-from rich.progress import BarColumn, DownloadColumn, Progress, TaskID, TimeRemainingColumn, TransferSpeedColumn
 
 from poks import __version__
-from poks.downloader import ProgressCallback
 from poks.poks import Poks
 from poks.scoop import convert_scoop_manifest
 
 package_name = "poks"
 DEFAULT_ROOT_DIR = Path.home() / ".poks"
-
-
-def _create_progress_callback(progress: Progress) -> ProgressCallback:
-    """Create a thread-safe progress callback that manages per-app task bars."""
-    tasks: dict[str, TaskID] = {}
-    lock = threading.Lock()
-
-    def callback(app_name: str, downloaded: int, total: int | None) -> None:
-        with lock:
-            if app_name not in tasks:
-                tasks[app_name] = progress.add_task(app_name, total=total or 0)
-            task_id = tasks[app_name]
-        if total and progress.tasks[task_id].total != total:
-            progress.update(task_id, total=total)
-        progress.update(task_id, completed=downloaded)
-
-    return callback
 
 
 app = typer.Typer(
@@ -113,26 +93,18 @@ def install(
     if not _validate_install_args(config_file, app_name, version, manifest, bucket):
         raise typer.Exit(1)
 
-    with Progress(
-        "[progress.description]{task.description}",
-        BarColumn(),
-        DownloadColumn(),
-        TransferSpeedColumn(),
-        TimeRemainingColumn(),
-    ) as progress:
-        poks = Poks(root_dir=root_dir, progress_callback=_create_progress_callback(progress), use_cache=cache)
+    poks = Poks(root_dir=root_dir, use_cache=cache)
 
-        try:
-            if config_file:
-                poks.install(config_file)
-            elif manifest:
-                poks.install_from_manifest(manifest, version)  # type: ignore[arg-type]
-            elif app_name:
-                poks.install_app(app_name, version, bucket)  # type: ignore[arg-type]
-        except (ValueError, FileNotFoundError) as e:
-            progress.stop()
-            logger.error(str(e))
-            raise typer.Exit(1) from e
+    try:
+        if config_file:
+            poks.install(config_file)
+        elif manifest:
+            poks.install_from_manifest(manifest, version)  # type: ignore[arg-type]
+        elif app_name:
+            poks.install_app(app_name, version, bucket)  # type: ignore[arg-type]
+    except (ValueError, FileNotFoundError) as e:
+        logger.error(str(e))
+        raise typer.Exit(1) from e
 
     if config_file:
         logger.info("Installation complete.")

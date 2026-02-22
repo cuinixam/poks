@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
 from pathlib import Path
 from urllib.request import url2pathname
 
 import requests
 from py_app_dev.core.logging import logger
 
+from poks.progress import ProgressCallback
+
 _HASH_CHUNK_SIZE = 8192
 _DOWNLOAD_TIMEOUT = 60
-
-ProgressCallback = Callable[[str, int, int | None], None]
-# Signature: (app_name, bytes_downloaded, total_bytes_or_none)
 
 
 class DownloadError(Exception):
@@ -58,12 +56,8 @@ def download_file(
                 downloaded += len(chunk)
                 if progress_callback:
                     progress_callback(app_name, downloaded, file_size)
-        if not progress_callback:
-            logger.info(f"Copied {url} -> {dest}")
         return dest
     _download_via_http(url, dest, app_name, progress_callback)
-    if not progress_callback:
-        logger.info(f"Downloaded {url} -> {dest}")
     return dest
 
 
