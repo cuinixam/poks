@@ -5,6 +5,7 @@ from pathlib import Path
 
 from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
+from py_app_dev.core.exceptions import UserNotificationException
 from py_app_dev.core.logging import logger
 
 from poks.bucket import (
@@ -120,10 +121,13 @@ class Poks:
             raise ValueError(f"Version {version} not found for app {app_name} in manifest")
         if app_version.yanked:
             raise ValueError(f"Version {version} of {app_name} is yanked: {app_version.yanked}")
+        try:
+            archive = resolve_archive(app_version, current_os, current_arch)
+        except ValueError as e:
+            raise UserNotificationException(f"Cannot install '{app_name}': {e}") from e
 
         install_dir = self.apps_dir / app_name / version
         if not install_dir.exists():
-            archive = resolve_archive(app_version, current_os, current_arch)
             effective = app_version.resolve_for_archive(archive)
             url = resolve_download_url(app_version, archive)
             download_result = get_cached_or_download(
@@ -140,7 +144,6 @@ class Poks:
             downloaded = download_result.downloaded
             extracted = True
         else:
-            archive = resolve_archive(app_version, current_os, current_arch)
             effective = app_version.resolve_for_archive(archive)
             downloaded = False
             extracted = False
@@ -289,10 +292,13 @@ class Poks:
 
         if app_version.yanked:
             raise ValueError(f"Version {app.version} of {app.name} is yanked: {app_version.yanked}")
+        try:
+            archive = resolve_archive(app_version, current_os, current_arch)
+        except ValueError as e:
+            raise UserNotificationException(f"Cannot install '{app.name}': {e}") from e
 
         install_dir = self.apps_dir / app.name / app.version
         if not install_dir.exists():
-            archive = resolve_archive(app_version, current_os, current_arch)
             effective = app_version.resolve_for_archive(archive)
             url = resolve_download_url(app_version, archive)
             download_result = get_cached_or_download(
@@ -311,7 +317,6 @@ class Poks:
             downloaded = download_result.downloaded
             extracted = True
         else:
-            archive = resolve_archive(app_version, current_os, current_arch)
             effective = app_version.resolve_for_archive(archive)
             downloaded = False
             extracted = False
