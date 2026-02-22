@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.2 (2026-02-22)
+
+### Bug fixes
+
+- Unpacking fails for subdirs with the same name as the app ([`b9e3179`](https://github.com/cuinixam/poks/commit/b9e317942259334f0d581af53dc6a9a0ac867b58))
+
 ## v0.9.1 (2026-02-22)
 
 ### Bug fixes
