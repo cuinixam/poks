@@ -5,7 +5,7 @@ description = "A lightweight archive downloader for pre-built binary dependencie
 readme = "README.md"
 license = "MIT"
 authors = [
-  { name = "cuinixam", email = "me@cuinixam.com" },
+  { name = "cuinixam", email = "cuinixam@gmail.com" },
 ]
 requires-python = ">=3.10"
 classifiers = [

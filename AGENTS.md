@@ -7,7 +7,7 @@ Poks is a cross-platform, user-space package manager for downloading pre-built b
 - **Purpose**: A lightweight archive downloader for pre-built binary dependencies
 - **CLI Framework**: Typer
 - **Serialization**: Mashumaro (dataclass-based)
-- **Core Dependencies**: `py-app-dev`, `typer`, `mashumaro`
+- **Core Dependencies**: `py-app-dev`, `typer`, `mashumaro`, `gitpython`, `requests`, `py7zr`, `zstandard`
 - **Build System**: Poetry Core
 - **Automation**: `pypeline-runner`
 
@@ -50,7 +50,7 @@ Poks is a cross-platform, user-space package manager for downloading pre-built b
    - What files will be modified, created, or deleted
    - What changes will be made and why
    - How the changes will be verified
-2. **Present the plan for user review** via `notify_user` with `BlockedOnUser=true`
+2. **Present the plan for user review** — output it as text and wait for the user's response
 3. **Wait for explicit approval** before proceeding with any file modifications
 4. **Only after approval**, begin execution
 

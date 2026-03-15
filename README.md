@@ -119,6 +119,8 @@ poks uninstall cmake              # all versions
 poks uninstall --all              # everything
 poks search cmake                 # search across local buckets
 poks list                         # list installed apps
+poks unpack archive.tar.gz -o ./out  # extract an archive directly
+poks convert-scoop manifest.json  # convert a Scoop manifest to Poks format
 ```
 
 ## Python API
