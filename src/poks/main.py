@@ -9,6 +9,7 @@ from py_app_dev.core.exceptions import UserNotificationException
 from py_app_dev.core.logging import logger, setup_logger, time_it
 
 from poks import __version__
+from poks.extractor import extract_archive
 from poks.poks import Poks
 from poks.scoop import convert_scoop_manifest
 
@@ -174,6 +175,24 @@ def convert_scoop(
 
     manifest.to_json_file(output)
     typer.echo(f"Poks manifest written to: {output}")
+
+
+@app.command(help="Unpack a supported archive into an output directory.")
+@time_it("unpack")
+def unpack(
+    archive: Annotated[Path, typer.Argument(help="Path to the archive file.", exists=False, readable=False)],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Output directory.")] = Path("."),
+    extract_dir: Annotated[str | None, typer.Option("--extract-dir", help="Nested directory inside the archive to relocate to output root.")] = None,
+) -> None:
+    if not archive.exists():
+        logger.error(f"File not found: {archive}")
+        raise typer.Exit(1)
+    try:
+        extract_archive(archive, output, extract_dir=extract_dir)
+        logger.info(f"Extracted '{archive.name}' to '{output}'.")
+    except (ValueError, UserNotificationException) as e:
+        logger.error(str(e))
+        raise typer.Exit(1) from e
 
 
 def main() -> int:

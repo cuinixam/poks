@@ -1,5 +1,6 @@
 """CLI tests for poks main.py."""
 
+import zipfile
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -225,5 +226,32 @@ def test_uninstall_all_apps(poks_env: PoksEnv) -> None:
 
 def test_uninstall_requires_app_or_all() -> None:
     result = runner.invoke(app, ["uninstall"])
+
+    assert result.exit_code == 1
+
+
+def test_unpack_zip(tmp_path: Path) -> None:
+    archive = tmp_path / "archive.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("hello.txt", "hello poks")
+    output = tmp_path / "out"
+
+    result = runner.invoke(app, ["unpack", str(archive), "--output", str(output)])
+
+    assert result.exit_code == 0
+    assert (output / "hello.txt").read_text() == "hello poks"
+
+
+def test_unpack_file_not_found(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["unpack", str(tmp_path / "missing.zip"), "--output", str(tmp_path / "out")])
+
+    assert result.exit_code == 1
+
+
+def test_unpack_unsupported_format(tmp_path: Path) -> None:
+    archive = tmp_path / "archive.rar"
+    archive.write_text("fake")
+
+    result = runner.invoke(app, ["unpack", str(archive), "--output", str(tmp_path / "out")])
 
     assert result.exit_code == 1
