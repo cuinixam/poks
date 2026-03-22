@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.11.0 (2026-03-22)
+
+### Bug fixes
+
+- Can not handle extract_dir with subpath ([`7b0f02a`](https://github.com/cuinixam/poks/commit/7b0f02a3650b15133c7fd40264c386af7f08c1d6))
+
+### Documentation
+
+- Add missing commands and small fixes ([`54aae88`](https://github.com/cuinixam/poks/commit/54aae88acd9c97499693b2a7b61c628ac0c9095b))
+
+### Features
+
+- Add unpack command to extract archives ([`3517b5c`](https://github.com/cuinixam/poks/commit/3517b5c041c85f9213fd089bc2a082ce23de97b1))
+
 ## v0.10.1 (2026-02-26)
 
 ### Bug fixes
