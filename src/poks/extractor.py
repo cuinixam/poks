@@ -130,11 +130,15 @@ def _relocate_extract_dir(dest_dir: Path, extract_dir: str) -> None:
         raise ValueError(f"extract_dir '{extract_dir}' escapes destination directory")
     if not source.is_dir():
         raise ValueError(f"extract_dir '{extract_dir}' not found in extracted archive")
-    staging = dest_dir / f".poks_tmp_{extract_dir}"
-    _rename_with_retry(source, staging)
-    for item in staging.iterdir():
+    extract_path = Path(extract_dir)
+    top_dir = extract_path.parts[0]
+    sub_path = Path(*extract_path.parts[1:]) if len(extract_path.parts) > 1 else None
+    staging_top = dest_dir / f".poks_tmp_{top_dir}"
+    _rename_with_retry(dest_dir / top_dir, staging_top)
+    content_dir = staging_top / sub_path if sub_path else staging_top
+    for item in content_dir.iterdir():
         shutil.move(str(item), str(dest_dir / item.name))
-    staging.rmdir()
+    shutil.rmtree(staging_top)
 
 
 def _decompress_zstd(data: bytes) -> bytes:

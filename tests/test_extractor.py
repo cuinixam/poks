@@ -150,6 +150,27 @@ def test_extract_dir_with_same_name_child(tmp_path):
     assert (dest / "toolchain" / "hello.txt").read_text() == HELLO_CONTENT
 
 
+NESTED_EXTRACT_DIR_CREATORS = [
+    ("zip", lambda p, td: _create_zip(p, top_dir=td)),
+    ("tar.gz", lambda p, td: _create_tar(p, "gz", ".tar.gz", top_dir=td)),
+]
+
+
+@pytest.mark.parametrize(
+    ("label", "creator"),
+    NESTED_EXTRACT_DIR_CREATORS,
+    ids=[a[0] for a in NESTED_EXTRACT_DIR_CREATORS],
+)
+def test_nested_extract_dir_relocates_contents(tmp_path, label, creator):
+    """Relocation must work when extract_dir contains path separators."""
+    nested_dir = "top/sub/deep"
+    archive = creator(tmp_path, nested_dir)
+    dest = tmp_path / "out"
+    extract_archive(archive, dest, extract_dir=nested_dir)
+    assert (dest / "hello.txt").read_text() == HELLO_CONTENT
+    assert not (dest / "top").exists()
+
+
 def test_unsupported_format_raises(tmp_path):
     fake = tmp_path / "archive.rar"
     fake.write_text("not real")
