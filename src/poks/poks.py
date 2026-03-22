@@ -127,26 +127,29 @@ class Poks:
             raise UserNotificationException(f"Cannot install '{app_name}': {e}") from e
 
         install_dir = self.apps_dir / app_name / version
-        if not install_dir.exists():
-            effective = app_version.resolve_for_archive(archive)
-            url = resolve_download_url(app_version, archive)
-            download_result = get_cached_or_download(
-                url,
-                archive.sha256,
-                self.cache_dir,
-                app_name=app_name,
-                progress_callback=self.progress_callback,
-                use_cache=self.use_cache,
-            )
-            extract_archive(download_result.path, install_dir, extract_dir=effective.extract_dir, progress_callback=self.extract_callback, app_name=app_name)
-            (install_dir / ".manifest.json").write_text(manifest.to_json_string())
-            self._create_receipt(install_dir, "", [])
-            downloaded = download_result.downloaded
-            extracted = True
-        else:
-            effective = app_version.resolve_for_archive(archive)
-            downloaded = False
-            extracted = False
+        try:
+            if not install_dir.exists():
+                effective = app_version.resolve_for_archive(archive)
+                url = resolve_download_url(app_version, archive)
+                download_result = get_cached_or_download(
+                    url,
+                    archive.sha256,
+                    self.cache_dir,
+                    app_name=app_name,
+                    progress_callback=self.progress_callback,
+                    use_cache=self.use_cache,
+                )
+                extract_archive(download_result.path, install_dir, extract_dir=effective.extract_dir, progress_callback=self.extract_callback, app_name=app_name)
+                (install_dir / ".manifest.json").write_text(manifest.to_json_string())
+                self._create_receipt(install_dir, "", [])
+                downloaded = download_result.downloaded
+                extracted = True
+            else:
+                effective = app_version.resolve_for_archive(archive)
+                downloaded = False
+                extracted = False
+        finally:
+            default_progress.close()
 
         return self._build_installed_app(app_name, version, install_dir, effective, downloaded=downloaded, extracted=extracted)
 
@@ -223,7 +226,10 @@ class Poks:
         current_os, current_arch = get_current_platform()
         bucket_paths = sync_all_buckets(config.buckets, self.buckets_dir)
 
-        installed_apps = self._install_apps_parallel(config.apps, bucket_paths, config.buckets, current_os, current_arch)
+        try:
+            installed_apps = self._install_apps_parallel(config.apps, bucket_paths, config.buckets, current_os, current_arch)
+        finally:
+            default_progress.close()
         return InstallResult(apps=installed_apps)
 
     def _install_apps_parallel(
