@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.1 (2026-03-22)
+
+### Bug fixes
+
+- Progress bars order is not correct ([`1193c79`](https://github.com/cuinixam/poks/commit/1193c791b2087c03f617d2f1769d000b1a874d8e))
+
 ## v0.11.0 (2026-03-22)
 
 ### Bug fixes
