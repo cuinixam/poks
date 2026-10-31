@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.2 (2026-10-31)
+
+### Bug fixes
+
+- Update pip and certifi for the emsign ca incident ([`e51ee2c`](https://github.com/cuinixam/poks/commit/e51ee2c89fe423e20ed31d090b89a6ea77d6226d))
+
 ## v0.11.1 (2026-03-22)
 
 ### Bug fixes
